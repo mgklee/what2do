@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
+import 'login_screen.dart';
 import 'tab1/tab1.dart';
 import 'tab2/tab2.dart';
 import 'tab3/tab3.dart';
 import 'tab4/tab4.dart';
-import 'login_screen.dart';
 
 void main() {
+  // Flutter SDK 초기화
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Kakao SDK 초기화 (Native App Key)
+  KakaoSdk.init(
+    nativeAppKey: '0f0975de364e8bf139886b4cf89df7d9',
+  );
+
   runApp(MyApp());
 }
 
@@ -16,6 +25,7 @@ class MyApp extends StatelessWidget {
       home: AppEntryPoint(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'Pretendard',
         scaffoldBackgroundColor: Colors.white,
         splashColor: Colors.transparent, // Remove ripple effect
         highlightColor: Colors.transparent, // Remove highlight effect
@@ -32,17 +42,28 @@ class AppEntryPoint extends StatefulWidget {
 class _AppEntryPointState extends State<AppEntryPoint> {
   bool isLoggedIn = false; // Tracks if the user is logged in
 
+  // Simulate login logic (can be replaced with real authentication logic)
+  void _onLoginSuccess() {
+    setState(() {
+      isLoggedIn = true;
+    });
+  }
+
+  void _onLogout() {
+    setState(() {
+      isLoggedIn = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return isLoggedIn
-      ? HomePage( // Navigate to main app after login
-        onLogout: () {
-          setState(() {
-            isLoggedIn = false; // Logout handler
-          });
-        },
-      )
-      : LoginScreen();
+      ? HomePage(
+          onLogout: _onLogout, // Pass logout callback to the main app screen
+        )
+      : LoginScreen(
+          onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
+        );
   }
 }
 
@@ -75,18 +96,23 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _titles[_currentIndex], // Update title based on current index
-          style: const TextStyle(
-            color: Color(0xFF333333),
-            fontWeight: FontWeight.bold,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80), // Custom height for the AppBar
+        child: AppBar(
+          title: Text(
+            _titles[_currentIndex], // Update title based on current index
+            style: const TextStyle(
+              color: Color(0xFF333333),
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
       ),
+
       body: tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: buildBottomNavigationItems(),
