@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
       home: AppEntryPoint(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        scaffoldBackgroundColor: Colors.white,
         splashColor: Colors.transparent, // Remove ripple effect
         highlightColor: Colors.transparent, // Remove highlight effect
       ),
@@ -74,7 +75,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           _titles[_currentIndex], // Update title based on current index
