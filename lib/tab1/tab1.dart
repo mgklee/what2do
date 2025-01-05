@@ -12,24 +12,8 @@ class _Tab1State extends State<Tab1> {
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
   int currentPageOffset = 0; // Tracks the current week offset
-
-  // Sample task data
-  final Map<String, List<Map<String, dynamic>>> taskData = {
-    '공부': [
-      {'task': '선대 과제 수행', 'completed': false},
-      {'task': 'node.js 공부', 'completed': false},
-      {'task': '레포트 작성', 'completed': false},
-    ],
-    '놀기': [
-      {'task': '민지랑 3시 약구정', 'completed': false},
-      {'task': '선영이랑 약속 잡기', 'completed': false},
-    ],
-    '취미': [
-      {'task': '반지 만들기', 'completed': false},
-      {'task': '검정치마 티켓팅 7시', 'completed': false},
-      {'task': '기타 연습 1시간', 'completed': false},
-    ],
-  };
+  Map<DateTime, Map<String, List<Map<String, dynamic>>>> toDoList = {};
+  final TextEditingController toDoController = TextEditingController();
 
   @override
   void initState() {
@@ -37,6 +21,12 @@ class _Tab1State extends State<Tab1> {
     // Calculate the starting page as the number of weeks since a fixed reference Sunday
     initialPage = DateTime.now().difference(_getReferenceSunday()).inDays ~/ 7;
     selectedDay = DateTime.now(); // Default to today
+  }
+
+  @override
+  void dispose() {
+    toDoController.dispose();
+    super.dispose();
   }
 
   @override
@@ -48,10 +38,7 @@ class _Tab1State extends State<Tab1> {
           children: [
             // Week Number and Calendar Section
             _buildWeekNumberAndCalendar(),
-            const SizedBox(height: 16),
-
-            // Task Sections
-            ...taskData.keys.map((category) => _buildTaskCategory(category, taskData[category]!)).toList(),
+            _buildToDoList(),
           ],
         ),
       ),
@@ -71,7 +58,7 @@ class _Tab1State extends State<Tab1> {
         ),
         // Fixed Weekdays Row with aligned Dates
         SizedBox(
-          height: 160, // Adjusted height for larger text
+          height: 120, // Adjusted height for larger text
           child: Column(
             children: [
               Padding(
@@ -136,7 +123,12 @@ class _Tab1State extends State<Tab1> {
                                           if (_isSelected(day))
                                             CircleAvatar(
                                               radius: 20,
-                                              backgroundColor: Colors.green,
+                                              backgroundColor: Color(0xFF18C971),
+                                            )
+                                          else if (_isToday(day))
+                                            CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor: Color(0x8018C971),
                                             ),
                                           Text(
                                             day.day.toString(),
@@ -172,51 +164,201 @@ class _Tab1State extends State<Tab1> {
     );
   }
 
-  Widget _buildTaskCategory(String title, List<Map<String, dynamic>> tasks) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildToDoList() {
+    if (selectedDay == null) return const SizedBox();
+
+    DateTime key = DateTime(
+        selectedDay!.year, selectedDay!.month, selectedDay!.day);
+    toDoList[key] ??= {}; // Initialize categories for the day if not present
+    Map<String, List<Map<String, dynamic>>> categories = toDoList[key]!;
+    String selectedCategory = categories.keys.isNotEmpty
+        ? categories.keys.first
+        : "Default";
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        List<Map<String, dynamic>> tasks = categories[selectedCategory] ?? [];
+
+        return Column(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.lock, size: 16),
-                const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
+            // Display all categories as a scrollable row
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0, vertical: 8.0),
+              child: Row(
+                children: categories.keys.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: selectedCategory == category
+                            ? Colors.green
+                            : Colors.grey, // Highlight selected category
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          selectedCategory =
+                              category; // Switch to the selected category
+                        });
+                      },
+                      child: Text(category),
+                    ),
+                  );
+                }).toList()
+                  ..add(
+                    // Add button to create a new category
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue),
+                        onPressed: () {
+                          _showAddCategoryDialog(context, setState, categories);
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("New Category"),
+                      ),
+                    ),
+                  ),
+              ),
             ),
-            const SizedBox(height: 8),
-            ...tasks.map((task) {
-              return Row(
-                children: [
-                  Checkbox(
-                    value: task['completed'],
+
+            // Display tasks for the selected category
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: Checkbox(
+                    value: tasks[index]['isCompleted'],
                     onChanged: (value) {
                       setState(() {
-                        task['completed'] = value;
+                        tasks[index]['isCompleted'] = value!;
                       });
                     },
+                    activeColor: Colors.green,
                   ),
-                  Text(task['task']),
-                ],
-              );
-            }).toList(),
+                  title: tasks[index]['isEditing']
+                      ? TextField(
+                    autofocus: true,
+                    controller: TextEditingController(
+                      text: tasks[index]['text'],
+                    ),
+                    onSubmitted: (newValue) {
+                      setState(() {
+                        tasks[index]['text'] = newValue;
+                        tasks[index]['isEditing'] = false;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                      ),
+                    ),
+                  )
+                      : GestureDetector(
+                    onTap: () => _showTaskMenu(context, tasks, index),
+                    child: Text(
+                      tasks[index]['text'],
+                      style: TextStyle(
+                        decoration: tasks[index]['isCompleted']
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Add new task input field
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: toDoController,
+                onSubmitted: (newValue) {
+                  if (newValue.isNotEmpty) {
+                    setState(() {
+                      categories[selectedCategory] ??= [];
+                      categories[selectedCategory]?.add({
+                        'text': newValue,
+                        'isCompleted': false,
+                        'isEditing': false,
+                      });
+                      toDoController.clear();
+                    });
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: "New Task",
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.green, width: 2.0),
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                  ),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
+        );
+      },
+    );
+  }
+
+  void _showAddCategoryDialog(BuildContext context, void Function(void Function()) setState,
+      Map<String, List<Map<String, dynamic>>> categories) {
+    final TextEditingController categoryController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Add Category"),
+          content: TextField(
+            controller: categoryController,
+            decoration: const InputDecoration(
+              labelText: "Category Name",
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.green, width: 2.0),
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey, width: 1.0),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                final newCategory = categoryController.text.trim();
+                if (newCategory.isNotEmpty && !categories.containsKey(newCategory)) {
+                  setState(() {
+                    categories[newCategory] = [];
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: const Text("Add"),
+            ),
+          ],
+        );
+      },
     );
   }
 
   // Helper to calculate the reference Sunday (January 2, 2000)
-  DateTime _getReferenceSunday() {
-    return DateTime(2000, 1, 2);
-  }
+  DateTime _getReferenceSunday() => DateTime(2000, 1, 2);
 
   // Helper to calculate the date for each day in the current week
   DateTime _calculateDateForPage(int pageOffset, int dayIndex) {
@@ -235,7 +377,7 @@ class _Tab1State extends State<Tab1> {
     // Calculate the week number (1-based index)
     int weekOfMonth = (daysSinceStartOfMonth ~/ 7) + 1;
 
-    return "${date.year}년 ${date.month}월 ${weekOfMonth}주차";
+    return "${date.year}년 ${date.month}월 $weekOfMonth주차";
   }
 
   // Helper to check if a given date is selected
@@ -243,5 +385,60 @@ class _Tab1State extends State<Tab1> {
     return selectedDay?.day == date.day &&
         selectedDay?.month == date.month &&
         selectedDay?.year == date.year;
+  }
+
+  bool _isToday(DateTime date) {
+    DateTime now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  void _showTaskMenu(BuildContext context, List<Map<String, dynamic>> tasks, int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _modifyTask(tasks, index); // Enter inline editing mode
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('Modify'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue, // Modify button color
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    tasks.removeAt(index); // Delete the task
+                    if (tasks.isEmpty) {
+                      DateTime key = DateTime(selectedDay!.year, selectedDay!.month, selectedDay!.day);
+                      toDoList.remove(key);
+                    }
+                  });
+                },
+                icon: const Icon(Icons.delete),
+                label: const Text('Delete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red, // Delete button color
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _modifyTask(List<Map<String, dynamic>> tasks, int index) {
+    setState(() {
+      tasks[index]['isEditing'] = true; // Enable inline editing for the selected task
+    });
   }
 }

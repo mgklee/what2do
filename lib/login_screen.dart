@@ -44,7 +44,7 @@ class LoginScreen extends StatelessWidget {
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoTalk();
           print('Logged in with KakaoTalk: ${token.accessToken}');
-          await _sendTokenToBackend(token.accessToken); // Send token to backend
+          // await _sendTokenToBackend(token.accessToken); // Send token to backend
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoTalk Login: $error');
@@ -54,7 +54,7 @@ class LoginScreen extends StatelessWidget {
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoAccount();
           print('Logged in with KakaoAccount: ${token.accessToken}');
-          await _sendTokenToBackend(token.accessToken); // Send token to backend
+          // await _sendTokenToBackend(token.accessToken); // Send token to backend
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoAccount Login: $error');
