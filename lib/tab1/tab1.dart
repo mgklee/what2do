@@ -12,8 +12,9 @@ class _Tab1State extends State<Tab1> {
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
   int currentPageOffset = 0; // Tracks the current week offset
-  Map<DateTime, Map<String, List<Map<String, dynamic>>>> toDoList = {};
+  Map<DateTime, Map<String, Map<String, dynamic>>> toDoList = {};
   final TextEditingController toDoController = TextEditingController();
+  final Map<String, TextEditingController> categoryControllers = {};
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _Tab1State extends State<Tab1> {
   @override
   void dispose() {
     toDoController.dispose();
+    categoryControllers.forEach((key, controller) => controller.dispose());
     super.dispose();
   }
 
@@ -33,19 +35,23 @@ class _Tab1State extends State<Tab1> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Week Number and Calendar Section
-            _buildWeekNumberAndCalendar(),
-            _buildToDoList(),
-          ],
-        ),
+      body: Column(
+        children: [
+          // Fixed Weekly Calendar
+          _buildWeeklyCalendar(),
+
+          // Scrollable To-Do List
+          Expanded(
+            child: SingleChildScrollView(
+              child: _buildToDoList(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildWeekNumberAndCalendar() {
+  Widget _buildWeeklyCalendar() {
     return Column(
       children: [
         // Display the week number
@@ -58,7 +64,7 @@ class _Tab1State extends State<Tab1> {
         ),
         // Fixed Weekdays Row with aligned Dates
         SizedBox(
-          height: 120, // Adjusted height for larger text
+          height: 120,
           child: Column(
             children: [
               Padding(
@@ -74,7 +80,7 @@ class _Tab1State extends State<Tab1> {
                           day,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 20, // Increased font size for weekdays
+                            fontSize: 20,
                             color: index == 0
                                 ? Colors.red // Sunday is red
                                 : index == 6
@@ -87,7 +93,7 @@ class _Tab1State extends State<Tab1> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 20), // Adjusted spacing for alignment
+              const SizedBox(height: 20),
               Expanded(
                 child: PageView.builder(
                   controller: PageController(initialPage: initialPage),
@@ -101,57 +107,54 @@ class _Tab1State extends State<Tab1> {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(
-                          7,
-                              (index) {
-                            DateTime day = _calculateDateForPage(pageOffset, index);
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    selectedDay = day; // Update the selected day
-                                  });
-                                },
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 40, // Adjusted size for date area
-                                      width: 40,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          if (_isSelected(day))
-                                            CircleAvatar(
-                                              radius: 20,
-                                              backgroundColor: Color(0xFF18C971),
-                                            )
-                                          else if (_isToday(day))
-                                            CircleAvatar(
-                                              radius: 20,
-                                              backgroundColor: Color(0x8018C971),
-                                            ),
-                                          Text(
-                                            day.day.toString(),
-                                            style: TextStyle(
-                                              fontSize: 18, // Increased font size for dates
-                                              color: _isSelected(day)
-                                                  ? Colors.white
-                                                  : (index == 0
-                                                  ? Colors.red // Sunday date is red
-                                                  : index == 6
-                                                  ? Colors.blue // Saturday date is blue
-                                                  : Colors.black),
-                                            ),
+                        children: List.generate(7, (index) {
+                          DateTime day = _calculateDateForPage(pageOffset, index);
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedDay = day; // Update the selected day
+                                });
+                              },
+                              child: Column(
+                                children: [
+                                  SizedBox(
+                                    height: 40,
+                                    width: 40,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        if (_isSelected(day))
+                                          const CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Color(0xFF18C971),
+                                          )
+                                        else if (_isToday(day))
+                                          const CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Color(0x8018C971),
                                           ),
-                                        ],
-                                      ),
+                                        Text(
+                                          day.day.toString(),
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: _isSelected(day)
+                                                ? Colors.white
+                                                : (index == 0
+                                                ? Colors.red
+                                                : index == 6
+                                                ? Colors.blue
+                                                : Colors.black),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        }),
                       ),
                     );
                   },
@@ -167,220 +170,203 @@ class _Tab1State extends State<Tab1> {
   Widget _buildToDoList() {
     if (selectedDay == null) return const SizedBox();
 
-    DateTime key = DateTime(
-        selectedDay!.year, selectedDay!.month, selectedDay!.day);
+    DateTime key = DateTime(selectedDay!.year, selectedDay!.month, selectedDay!.day);
     toDoList[key] ??= {}; // Initialize categories for the day if not present
-    Map<String, List<Map<String, dynamic>>> categories = toDoList[key]!;
-    String selectedCategory = categories.keys.isNotEmpty
-        ? categories.keys.first
-        : "Default";
+    Map<String, Map<String, dynamic>> categories = toDoList[key]!;
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        List<Map<String, dynamic>> tasks = categories[selectedCategory] ?? [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: const Text(
+            "Categories",
+            style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+          ),
+        ),
 
-        return Column(
-          children: [
-            // Display all categories as a scrollable row
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0, vertical: 8.0),
-              child: Row(
-                children: categories.keys.map((category) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: selectedCategory == category
-                            ? Colors.green
-                            : Colors.grey, // Highlight selected category
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          selectedCategory =
-                              category; // Switch to the selected category
-                        });
-                      },
-                      child: Text(category),
-                    ),
-                  );
-                }).toList()
-                  ..add(
-                    // Add button to create a new category
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue),
-                        onPressed: () {
-                          _showAddCategoryDialog(context, setState, categories);
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text("New Category"),
-                      ),
-                    ),
-                  ),
-              ),
-            ),
-
-            // Display tasks for the selected category
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: Checkbox(
-                    value: tasks[index]['isCompleted'],
-                    onChanged: (value) {
-                      setState(() {
-                        tasks[index]['isCompleted'] = value!;
-                      });
-                    },
-                    activeColor: Colors.green,
-                  ),
-                  title: tasks[index]['isEditing']
-                      ? TextField(
-                    autofocus: true,
-                    controller: TextEditingController(
-                      text: tasks[index]['text'],
-                    ),
-                    onSubmitted: (newValue) {
-                      setState(() {
-                        tasks[index]['text'] = newValue;
-                        tasks[index]['isEditing'] = false;
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.blue, width: 2.0),
-                      ),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey, width: 1.0),
-                      ),
-                    ),
-                  )
-                      : GestureDetector(
-                    onTap: () => _showTaskMenu(context, tasks, index),
-                    child: Text(
-                      tasks[index]['text'],
-                      style: TextStyle(
-                        decoration: tasks[index]['isCompleted']
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // Add new task input field
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: toDoController,
-                onSubmitted: (newValue) {
-                  if (newValue.isNotEmpty) {
+        // Categories List
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: categories.keys.length + 1, // Extra card for the (+) button
+          itemBuilder: (context, index) {
+            // (+) Button Card
+            if (index == categories.keys.length) {
+              return Card(
+                elevation: 4.0,
+                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                child: InkWell(
+                  onTap: () {
+                    // Add a new empty category and enter editing mode
                     setState(() {
-                      categories[selectedCategory] ??= [];
-                      categories[selectedCategory]?.add({
-                        'text': newValue,
-                        'isCompleted': false,
-                        'isEditing': false,
-                      });
-                      toDoController.clear();
+                      final newCategoryName = "New Category ${categories.length + 1}";
+                      categories[newCategoryName] = {
+                        'isEditing': true,
+                        'tasks': <Map<String, dynamic>>[], // Ensure the correct type
+                      };
                     });
-                  }
-                },
-                decoration: const InputDecoration(
-                  labelText: "New Task",
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.green, width: 2.0),
-                  ),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                  },
+                  child: Container(
+                    height: 100,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.add, size: 40.0, color: Colors.green),
                   ),
                 ),
+              );
+            }
+
+            // Existing Category Cards
+            String category = categories.keys.elementAt(index);
+            bool isEditingCategory = categories[category]?['isEditing'] ?? false;
+            List<Map<String, dynamic>> tasks = categories[category]?['tasks'] ?? [];
+
+            return Card(
+              elevation: 4.0,
+              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: Column(
+                children: [
+                  // Category Title
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    color: Colors.green.shade200,
+                    child: isEditingCategory
+                        ? TextField(
+                      autofocus: true,
+                      controller: TextEditingController(text: category),
+                      onSubmitted: (newName) {
+                        if (newName.isNotEmpty && !categories.containsKey(newName)) {
+                          setState(() {
+                            categories[newName] = {
+                              'isEditing': false,
+                              'tasks': categories[category]?['tasks'] ?? [],
+                            };
+                            categories.remove(category);
+                          });
+                        } else {
+                          setState(() {
+                            categories[category]?['isEditing'] = false;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                      ),
+                    )
+                        : GestureDetector(
+                      onTap: () {
+                        _showCategoryMenu(context, categories, category, setState);
+                      },
+                      child: Text(
+                        category,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.0,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+
+                  // Tasks for the Category
+                  ...tasks.map((task) => ListTile(
+                    leading: Checkbox(
+                      value: task['isCompleted'],
+                      onChanged: (value) {
+                        setState(() {
+                          task['isCompleted'] = value!;
+                        });
+                      },
+                      activeColor: Colors.green,
+                    ),
+                    title: task['isEditing']
+                        ? TextField(
+                      autofocus: true,
+                      controller: TextEditingController(text: task['text']),
+                      onSubmitted: (newValue) {
+                        setState(() {
+                          task['text'] = newValue;
+                          task['isEditing'] = false;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                      ),
+                    )
+                        : GestureDetector(
+                      onTap: () => _showTaskMenu(context, tasks, tasks.indexOf(task)),
+                      child: Text(
+                        task['text'],
+                        style: TextStyle(
+                          decoration: task['isCompleted']
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  )),
+
+                  // Add Task Input Field
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: TextField(
+                      onSubmitted: (newValue) {
+                        if (newValue.isNotEmpty) {
+                          setState(() {
+                            tasks.add({
+                              'text': newValue,
+                              'isCompleted': false,
+                              'isEditing': false,
+                            });
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: "New Task",
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.green, width: 2.0),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 
-  void _showAddCategoryDialog(BuildContext context, void Function(void Function()) setState,
-      Map<String, List<Map<String, dynamic>>> categories) {
-    final TextEditingController categoryController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Add Category"),
-          content: TextField(
-            controller: categoryController,
-            decoration: const InputDecoration(
-              labelText: "Category Name",
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.green, width: 2.0),
-              ),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey, width: 1.0),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                final newCategory = categoryController.text.trim();
-                if (newCategory.isNotEmpty && !categories.containsKey(newCategory)) {
-                  setState(() {
-                    categories[newCategory] = [];
-                  });
-                }
-                Navigator.pop(context);
-              },
-              child: const Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Helper to calculate the reference Sunday (January 2, 2000)
   DateTime _getReferenceSunday() => DateTime(2000, 1, 2);
 
-  // Helper to calculate the date for each day in the current week
   DateTime _calculateDateForPage(int pageOffset, int dayIndex) {
     DateTime baseSunday = _getReferenceSunday();
     return baseSunday.add(Duration(days: pageOffset * 7 + dayIndex));
   }
 
-  // Helper to calculate the week number
   String _getWeekNumber(DateTime date) {
-    // Get the first day of the month
     DateTime firstDayOfMonth = DateTime(date.year, date.month, 1);
-
-    // Calculate the number of days since the start of the month
     int daysSinceStartOfMonth = date.difference(firstDayOfMonth).inDays;
-
-    // Calculate the week number (1-based index)
     int weekOfMonth = (daysSinceStartOfMonth ~/ 7) + 1;
 
     return "${date.year}년 ${date.month}월 $weekOfMonth주차";
   }
 
-  // Helper to check if a given date is selected
   bool _isSelected(DateTime date) {
     return selectedDay?.day == date.day &&
         selectedDay?.month == date.month &&
@@ -390,6 +376,55 @@ class _Tab1State extends State<Tab1> {
   bool _isToday(DateTime date) {
     DateTime now = DateTime.now();
     return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  void _showCategoryMenu(BuildContext context, Map<String, Map<String, dynamic>> categories,
+      String category, void Function(void Function()) setState) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _modifyCategory(categories, category, setState);
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('Modify'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    categories.remove(category);
+                    categoryControllers.remove(category);
+                  });
+                },
+                icon: const Icon(Icons.delete),
+                label: const Text('Delete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _modifyCategory(Map<String, Map<String, dynamic>> categories, String category,
+      void Function(void Function()) setState) {
+    setState(() {
+      categories[category]?['isEditing'] = true;
+    });
   }
 
   void _showTaskMenu(BuildContext context, List<Map<String, dynamic>> tasks, int index) {
@@ -404,29 +439,25 @@ class _Tab1State extends State<Tab1> {
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  _modifyTask(tasks, index); // Enter inline editing mode
+                  _modifyTask(tasks, index);
                 },
                 icon: const Icon(Icons.edit),
                 label: const Text('Modify'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Modify button color
+                  backgroundColor: Colors.blue,
                 ),
               ),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
                   setState(() {
-                    tasks.removeAt(index); // Delete the task
-                    if (tasks.isEmpty) {
-                      DateTime key = DateTime(selectedDay!.year, selectedDay!.month, selectedDay!.day);
-                      toDoList.remove(key);
-                    }
+                    tasks.removeAt(index);
                   });
                 },
                 icon: const Icon(Icons.delete),
                 label: const Text('Delete'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // Delete button color
+                  backgroundColor: Colors.red,
                 ),
               ),
             ],
@@ -438,7 +469,7 @@ class _Tab1State extends State<Tab1> {
 
   void _modifyTask(List<Map<String, dynamic>> tasks, int index) {
     setState(() {
-      tasks[index]['isEditing'] = true; // Enable inline editing for the selected task
+      tasks[index]['isEditing'] = true;
     });
   }
 }

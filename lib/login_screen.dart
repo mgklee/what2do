@@ -1,39 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'dart:convert';
 
 class LoginScreen extends StatelessWidget {
   final VoidCallback onLoginSuccess;
+  final Function(Map<String, dynamic>) onBackendResponse;
 
-  LoginScreen({required this.onLoginSuccess, super.key});
+  const LoginScreen({
+    required this.onLoginSuccess,
+    required this.onBackendResponse,
+    super.key,
+  });
 
-  // Google Sign-In 설정
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:
-    "358946647934-bmir594d3nbdj7mcgradov4ogrd74p1b.apps.googleusercontent.com",
-    scopes: [
-      'email', // Access the user's email
-      'https://www.googleapis.com/auth/userinfo.profile', // Access profile info
-    ],
-  );
-
-  // Google 로그인 처리
-  Future<void> _handleGoogleSignIn() async {
-    try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-      if (account != null) {
-        print('Logged in as: ${account.displayName}');
-        print('Email: ${account.email}');
-        onLoginSuccess();
-      } else {
-        print('Sign-In aborted by user.');
-      }
-    } catch (error) {
-      print('Error during Google Sign-In: $error');
-    }
-  }
+  // // Google Sign-In 설정
+  // final GoogleSignIn _googleSignIn = GoogleSignIn(
+  //   clientId:
+  //   "358946647934-bmir594d3nbdj7mcgradov4ogrd74p1b.apps.googleusercontent.com",
+  //   scopes: [
+  //     'email', // Access the user's email
+  //     'https://www.googleapis.com/auth/userinfo.profile', // Access profile info
+  //   ],
+  // );
+  //
+  // // Google 로그인 처리
+  // Future<void> _handleGoogleSignIn() async {
+  //   try {
+  //     final GoogleSignInAccount? account = await _googleSignIn.signIn();
+  //     if (account != null) {
+  //       print('Logged in as: ${account.displayName}');
+  //       print('Email: ${account.email}');
+  //       onLoginSuccess();
+  //     } else {
+  //       print('Sign-In aborted by user.');
+  //     }
+  //   } catch (error) {
+  //     print('Error during Google Sign-In: $error');
+  //   }
+  // }
 
   // Kakao 로그인 처리
   Future<void> _handleKakaoSignIn() async {
@@ -44,7 +49,7 @@ class LoginScreen extends StatelessWidget {
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoTalk();
           print('Logged in with KakaoTalk: ${token.accessToken}');
-          // await _sendTokenToBackend(token.accessToken); // Send token to backend
+          await _sendTokenToBackend(token.accessToken); // Send token to backend
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoTalk Login: $error');
@@ -54,7 +59,7 @@ class LoginScreen extends StatelessWidget {
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoAccount();
           print('Logged in with KakaoAccount: ${token.accessToken}');
-          // await _sendTokenToBackend(token.accessToken); // Send token to backend
+          await _sendTokenToBackend(token.accessToken); // Send token to backend
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoAccount Login: $error');
@@ -66,8 +71,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   Future<void> _sendTokenToBackend(String accessToken) async {
-    final url = Uri.parse(
-        "http://172.10.7.56:8000/users/login"); // Your backend endpoint
+    final url = Uri.parse("http://172.10.7.56:8000/users/login"); // Your backend endpoint
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
@@ -75,7 +79,9 @@ class LoginScreen extends StatelessWidget {
     );
 
     if (response.statusCode == 200) {
-      print("Login successful: ${jsonDecode(response.body)}");
+      final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      print("Login successful: $responseData");
+      onBackendResponse(responseData); // Pass the response to the callback
     } else {
       print("Login failed: ${response.body}");
     }

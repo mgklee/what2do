@@ -11,9 +11,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Kakao SDK 초기화 (Native App Key)
-  KakaoSdk.init(
-    nativeAppKey: '0f0975de364e8bf139886b4cf89df7d9',
-  );
+  KakaoSdk.init(nativeAppKey: '0f0975de364e8bf139886b4cf89df7d9');
 
   runApp(MyApp());
 }
@@ -41,11 +39,18 @@ class AppEntryPoint extends StatefulWidget {
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   bool isLoggedIn = false; // Tracks if the user is logged in
+  late Map<String, dynamic> userInfo; // Store backend response data
 
   // Simulate login logic (can be replaced with real authentication logic)
   void _onLoginSuccess() {
     setState(() {
       isLoggedIn = true;
+    });
+  }
+
+  void _onBackendResponse(Map<String, dynamic> response) {
+    setState(() {
+      userInfo = response;
     });
   }
 
@@ -60,17 +65,24 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     return isLoggedIn
       ? HomePage(
           onLogout: _onLogout, // Pass logout callback to the main app screen
+          userInfo: userInfo,
         )
       : LoginScreen(
           onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
+          onBackendResponse: _onBackendResponse, // Handle backend response
         );
   }
 }
 
 class HomePage extends StatefulWidget {
   final VoidCallback onLogout; // Callback for logout
+  final Map<String, dynamic> userInfo; // Store backend response data
 
-  const HomePage({required this.onLogout, super.key});
+  const HomePage({
+    required this.onLogout,
+    required this.userInfo,
+    super.key
+  });
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -86,18 +98,18 @@ class _HomePageState extends State<HomePage> {
     'Mypage',
   ];
 
-  final List<Widget> tabs = [
+  late List<Widget> tabs = [
     Tab1(),
     Tab2(),
     Tab3(),
-    Tab4(),
+    Tab4(userInfo: widget.userInfo),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80), // Custom height for the AppBar
+        preferredSize: const Size.fromHeight(60), // Custom height for the AppBar
         child: AppBar(
           title: Text(
             _titles[_currentIndex], // Update title based on current index
@@ -107,7 +119,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           backgroundColor: Colors.white,
-          foregroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           elevation: 0,
           centerTitle: false,
         ),
