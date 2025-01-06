@@ -99,7 +99,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   late List<Widget> tabs = [
-    Tab1(),
+    Tab1(userInfo: widget.userInfo),
     Tab2(),
     Tab3(userInfo: widget.userInfo),
     Tab4(userInfo: widget.userInfo, onLogout: widget.onLogout),
