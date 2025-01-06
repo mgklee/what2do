@@ -1,3 +1,4 @@
+// Full implementation of Tab1 with the requested features.
 import 'package:flutter/material.dart';
 
 class Tab1 extends StatefulWidget {
@@ -14,7 +15,6 @@ class _Tab1State extends State<Tab1> {
   int currentPageOffset = 0; // Tracks the current week offset
   Map<DateTime, Map<String, Map<String, dynamic>>> toDoList = {};
   final TextEditingController toDoController = TextEditingController();
-  final Map<String, TextEditingController> categoryControllers = {};
 
   @override
   void initState() {
@@ -27,26 +27,28 @@ class _Tab1State extends State<Tab1> {
   @override
   void dispose() {
     toDoController.dispose();
-    categoryControllers.forEach((key, controller) => controller.dispose());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          // Fixed Weekly Calendar
-          _buildWeeklyCalendar(),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Column(
+          children: [
+            // Fixed Weekly Calendar
+            _buildWeeklyCalendar(),
 
-          // Scrollable To-Do List
-          Expanded(
-            child: SingleChildScrollView(
-              child: _buildToDoList(),
+            // Scrollable To-Do List
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildToDoList(),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -177,15 +179,6 @@ class _Tab1State extends State<Tab1> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: const Text(
-            "Categories",
-            style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-          ),
-        ),
-
         // Categories List
         ListView.builder(
           shrinkWrap: true,
@@ -195,23 +188,30 @@ class _Tab1State extends State<Tab1> {
             // (+) Button Card
             if (index == categories.keys.length) {
               return Card(
-                elevation: 4.0,
+                color: Colors.grey[200],
                 margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                child: InkWell(
-                  onTap: () {
-                    // Add a new empty category and enter editing mode
-                    setState(() {
-                      final newCategoryName = "New Category ${categories.length + 1}";
-                      categories[newCategoryName] = {
-                        'isEditing': true,
-                        'tasks': <Map<String, dynamic>>[], // Ensure the correct type
-                      };
-                    });
-                  },
-                  child: Container(
-                    height: 100,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.add, size: 40.0, color: Colors.green),
+                child: Center(
+                  child: InkWell(
+                    onTap: () {
+                      // Add a new empty category with a unique name
+                      setState(() {
+                        int categoryIndex = 1;
+                        String newCategoryName;
+                        do {
+                          newCategoryName = "New Category $categoryIndex";
+                          categoryIndex++;
+                        } while (categories.containsKey(newCategoryName));
+
+                        categories[newCategoryName] = {
+                          'isEditing': true,
+                          'tasks': <Map<String, dynamic>>[], // Ensure the correct type
+                        };
+                      });
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(Icons.add, size: 40.0, color: Color(0xFF18C971)),
+                    ),
                   ),
                 ),
               );
@@ -223,54 +223,95 @@ class _Tab1State extends State<Tab1> {
             List<Map<String, dynamic>> tasks = categories[category]?['tasks'] ?? [];
 
             return Card(
-              elevation: 4.0,
+              color: Colors.grey[200],
               margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: Column(
                 children: [
-                  // Category Title
+                  // Category Title with Add (+) Button
                   Container(
-                    padding: const EdgeInsets.all(8.0),
-                    color: Colors.green.shade200,
-                    child: isEditingCategory
-                        ? TextField(
-                      autofocus: true,
-                      controller: TextEditingController(text: category),
-                      onSubmitted: (newName) {
-                        if (newName.isNotEmpty && !categories.containsKey(newName)) {
-                          setState(() {
-                            categories[newName] = {
-                              'isEditing': false,
-                              'tasks': categories[category]?['tasks'] ?? [],
-                            };
-                            categories.remove(category);
-                          });
-                        } else {
-                          setState(() {
-                            categories[category]?['isEditing'] = false;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    color: Colors.transparent,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Category Name or Edit Field
+                        isEditingCategory
+                            ? Expanded(
+                          child: Focus( // Added Focus widget to detect unfocus
+                            onFocusChange: (hasFocus) {
+                              if (!hasFocus) {
+                                setState(() {
+                                  final newName = TextEditingController(text: category).text;
+                                  if (newName.isNotEmpty && !categories.containsKey(newName)) {
+                                    categories[newName] = {
+                                      'isEditing': false,
+                                      'tasks': categories[category]?['tasks'] ?? [],
+                                    };
+                                    categories.remove(category);
+                                  } else {
+                                    categories[category]?['isEditing'] = false;
+                                  }
+                                });
+                              }
+                            },
+                            child: TextField(
+                              autofocus: true,
+                              controller: TextEditingController(text: category),
+                              onSubmitted: (newName) {
+                                if (newName.isNotEmpty && !categories.containsKey(newName)) {
+                                  setState(() {
+                                    categories[newName] = {
+                                      'isEditing': false,
+                                      'tasks': categories[category]?['tasks'] ?? [],
+                                    };
+                                    categories.remove(category);
+                                  });
+                                } else {
+                                  setState(() {
+                                    categories[category]?['isEditing'] = false;
+                                  });
+                                }
+                              },
+                              decoration: const InputDecoration(
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                                ),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                            : GestureDetector(
+                          onTap: () {
+                            _showCategoryMenu(context, categories, category, setState);
+                          },
+                          child: Text(
+                            category,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16.0,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
+
+                        // Add (+) Button
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              tasks.add({
+                                'text': "New Task ${tasks.length + 1}",
+                                'isCompleted': false,
+                                'isEditing': true,
+                              });
+                            });
+                          },
+                          icon: const Icon(Icons.add),
+                          tooltip: 'Add Task',
                         ),
-                      ),
-                    )
-                        : GestureDetector(
-                      onTap: () {
-                        _showCategoryMenu(context, categories, category, setState);
-                      },
-                      child: Text(
-                        category,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16.0,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ),
                   ),
 
@@ -283,24 +324,35 @@ class _Tab1State extends State<Tab1> {
                           task['isCompleted'] = value!;
                         });
                       },
-                      activeColor: Colors.green,
+                      activeColor: Color(0xFF18C971),
                     ),
                     title: task['isEditing']
-                        ? TextField(
-                      autofocus: true,
-                      controller: TextEditingController(text: task['text']),
-                      onSubmitted: (newValue) {
-                        setState(() {
-                          task['text'] = newValue;
-                          task['isEditing'] = false;
-                        });
+                        ? Focus( // Added Focus widget to detect unfocus
+                      onFocusChange: (hasFocus) {
+                        if (!hasFocus) {
+                          setState(() {
+                            final newValue = TextEditingController(text: task['text']).text;
+                            task['text'] = newValue;
+                            task['isEditing'] = false;
+                          });
+                        }
                       },
-                      decoration: const InputDecoration(
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blue, width: 2.0),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                      child: TextField(
+                        autofocus: true,
+                        controller: TextEditingController(text: task['text']),
+                        onSubmitted: (newValue) {
+                          setState(() {
+                            task['text'] = newValue;
+                            task['isEditing'] = false;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                          ),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF18C971), width: 1.0),
+                          ),
                         ),
                       ),
                     )
@@ -316,33 +368,6 @@ class _Tab1State extends State<Tab1> {
                       ),
                     ),
                   )),
-
-                  // Add Task Input Field
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: TextField(
-                      onSubmitted: (newValue) {
-                        if (newValue.isNotEmpty) {
-                          setState(() {
-                            tasks.add({
-                              'text': newValue,
-                              'isCompleted': false,
-                              'isEditing': false,
-                            });
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: "New Task",
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.green, width: 2.0),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey, width: 1.0),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             );
@@ -404,7 +429,6 @@ class _Tab1State extends State<Tab1> {
                   Navigator.pop(context);
                   setState(() {
                     categories.remove(category);
-                    categoryControllers.remove(category);
                   });
                 },
                 icon: const Icon(Icons.delete),

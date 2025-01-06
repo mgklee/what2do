@@ -24,9 +24,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Pretendard',
+        highlightColor: Colors.transparent, // Remove highlight effect
         scaffoldBackgroundColor: Colors.white,
         splashColor: Colors.transparent, // Remove ripple effect
-        highlightColor: Colors.transparent, // Remove highlight effect
       ),
     );
   }
@@ -64,8 +64,8 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   Widget build(BuildContext context) {
     return isLoggedIn
       ? HomePage(
-          onLogout: _onLogout, // Pass logout callback to the main app screen
           userInfo: userInfo,
+          onLogout: _onLogout, // Pass logout callback to the main app screen
         )
       : LoginScreen(
           onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
@@ -75,12 +75,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 }
 
 class HomePage extends StatefulWidget {
-  final VoidCallback onLogout; // Callback for logout
   final Map<String, dynamic> userInfo; // Store backend response data
+  final VoidCallback onLogout; // Callback for logout
 
   const HomePage({
-    required this.onLogout,
     required this.userInfo,
+    required this.onLogout,
     super.key
   });
 
@@ -101,8 +101,8 @@ class _HomePageState extends State<HomePage> {
   late List<Widget> tabs = [
     Tab1(),
     Tab2(),
-    Tab3(),
-    Tab4(userInfo: widget.userInfo),
+    Tab3(userInfo: widget.userInfo),
+    Tab4(userInfo: widget.userInfo, onLogout: widget.onLogout),
   ];
 
   @override
