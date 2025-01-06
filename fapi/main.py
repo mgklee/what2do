@@ -2,10 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine, get_db
 from auth import verify_kakao_token
-from crud import get_user_by_kakao_id, create_user, get_todos_by_user
+from crud import get_user_by_kakao_id, create_user, get_todos_by_user, get_todos_by_friends
 from schemas import OAuthToken, UserResponse
 from models import User, Todo, Friend
-
 
 app = FastAPI()
 
@@ -72,6 +71,71 @@ def get_user_todos(user_id: int, db: Session = Depends(get_db)):
     if not todos:
         raise HTTPException(status_code=404, detail="No todos found for the user")
     return todos
+
+# 할 일 업데이트 엔드포인트
+@app.put("/users/{user_id}/todos")
+def update_todo_list(
+    user_id: int,
+    data: dict,  # 요청 데이터는 JSON으로 전달
+    db: Session = Depends(get_db)
+):
+    print(data)
+    """
+    사용자 ID와 특정 날짜의 할 일 목록을 업데이트합니다.
+    :param user_id: 사용자 ID
+    :param data: {"date": "YYYY-MM-DD", "toDoList": [{"task": "할 일", "is_locked": true, "is_completed": false}]}
+    """
+    # 요청 데이터에서 날짜와 할 일 목록 가져오기
+    date_str = data.get("date")
+    to_do_list = data.get("toDoList", [])
+    
+    if not date_str or not to_do_list:
+        raise HTTPException(status_code=400, detail="Both 'date' and 'toDoList' are required.")
+    
+    try:
+        # 문자열 날짜를 datetime 객체로 변환
+        date_obj = datetime.datetime.fromisoformat(date_str).date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use 'YYYY-MM-DD'.")
+
+    # 기존 할 일 삭제 (해당 날짜에 기존 데이터가 있다면 제거)
+    db.query(Todo).filter(Todo.user_id == user_id, Todo.date_created == date_obj).delete()
+
+    # 새로운 할 일 추가
+    for todo in to_do_list:
+        new_todo = Todo(
+            user_id=user_id,
+            date_created=date_obj,
+            category=todo.get("category", "기타"),  # 기본값: 기타
+            task=todo.get("task"),
+            is_locked=todo.get("is_locked", True),
+            is_completed=todo.get("is_completed", False),
+        )
+        db.add(new_todo)
+
+    db.commit()
+
+    return {"message": "To-do list updated successfully for date: {}".format(date_str)}
+
+
+
+# 친구 todo 목록 볼 수 있는 tab3 의 엔드포인트 정리
+
+@app.get("/users/{user_id}/friends/todos")
+def get_friends_todos(
+    user_id: int,
+    limit: int = 10,  # 한 번에 가져올 최대 데이터 개수 (기본값: 10)
+    offset: int = 0,  # 건너뛸 데이터 시작 위치 (기본값: 0)
+    db: Session = Depends(get_db)
+):
+    # 친구들의 todo 가져오기
+    todos = get_todos_by_friends(db, user_id, limit=limit, offset=offset)
+
+    if not todos:
+        raise HTTPException(status_code=404, detail="No todos found for the user's friends")
+    
+    return todos
+
 
 # 개인 friend 목록 볼 수 있는 tab4 의 엔드포인트 정리
 

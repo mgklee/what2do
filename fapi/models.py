@@ -31,7 +31,7 @@ class Todo(Base):
     __tablename__="todo"
 
     """users 테이블에서 id 를 외래키로 받는게 primary 키, 어떤 날에 생성한건지 날짜 DATE 타입,
-    어떤 category인지 TEXT 타입, 각각의 category마다 할 일 적기 TEXT 타입, 보여줄지 말지 결정 lock 이거는 boolean타입 (잠그면 0, 보여주면 1), 할 일 수행 후 완료 체크 이것도 boolean 타입입"""
+    어떤 category인지 TEXT 타입, 각각의 category마다 할 일 적기 TEXT 타입, 보여줄지 말지 결정 lock 이거는 boolean타입 (잠그면 0, 보여주면 1), 할 일 수행 후 완료 체크 이것도 boolean 타입"""
 
     # 필드 정의
     id = Column(Integer, primary_key=True, index=True)  # 고유 ID

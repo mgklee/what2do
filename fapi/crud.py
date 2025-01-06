@@ -59,6 +59,45 @@ def create_todo(db: Session, user_id: int, date_created, category: str, task: st
 def get_todos_by_user(db: Session, user_id: int):
     return db.query(Todo).filter(Todo.user_id == user_id).all()
 
+def get_todos_by_friends(db: Session, user_id: int, limit: int = 10, offset: int = 0):
+    # 1. 친구 ID 가져오기
+    friends = db.query(Friend.friend_id).filter(Friend.user_id == user_id).all()
+    friend_ids = [friend[0] for friend in friends]
+
+    # 친구 ID로 User 정보 가져오기
+    friends_data = db.query(User).filter(User.id.in_(friend_ids)).all()
+
+    # 2. 각 친구의 todos 가져오기 (is_locked == True 조건 추가)
+    result = []
+    for friend in friends_data:
+        # 해당 친구의 모든 todos 가져오기
+        todos = db.query(Todo).filter(
+            Todo.user_id == friend.id,
+            Todo.is_locked == True
+        ).all()
+
+        # 3. 카테고리별로 그룹화
+        categories = {}
+        for todo in todos:
+            if todo.category not in categories:
+                categories[todo.category] = []
+            categories[todo.category].append({
+                "task": todo.task,
+                "date_created": todo.date_created
+            })
+
+        # 카테고리별 데이터를 리스트 형태로 변환
+        categories_list = [{"category": category, "todos": todos} for category, todos in categories.items()]
+
+        # 최종 결과에 추가
+        result.append({
+            "nickname": friend.nickname,
+            "profile_image": friend.profile_image,
+            "categories": categories_list
+        })
+
+    return result
+
 
 #friend 테이블 관련 crud 정리
 
@@ -75,11 +114,14 @@ def create_friend(db: Session, user_id: int, friend_id: int):
         raise HTTPException(status_code=400, detail="Friendship already exists.")
 
     # 새로운 친구 관계 추가
-    new_friend = Friend(user_id=user_id, friend_id=friend_id)
-    db.add(new_friend)
+    new_friend1 = Friend(user_id=user_id, friend_id=friend_id)
+    new_friend2 = Friend(user_id=friend_id, friend_id=user_id)
+    db.add(new_friend1)
+    db.add(new_friend2)
     db.commit()
-    db.refresh(new_friend)
-
+    db.refresh(new_friend1)
+    db.refresh(new_friend2)
+    
     return new_friend
 
 
