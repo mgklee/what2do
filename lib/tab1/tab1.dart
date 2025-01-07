@@ -1,20 +1,23 @@
-// Full implementation of Tab1 with the requested features.
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class Tab1 extends StatefulWidget {
-  const Tab1({super.key});
+  final Map<String, dynamic> userInfo;
+
+  const Tab1({required this.userInfo, super.key});
 
   @override
   _Tab1State createState() => _Tab1State();
 }
 
 class _Tab1State extends State<Tab1> {
+  final String baseUrl = 'http://172.10.7.56:8000';
   final List<String> weekDays = ['일', '월', '화', '수', '목', '금', '토']; // Fixed week days
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
   int currentPageOffset = 0; // Tracks the current week offset
   Map<DateTime, Map<String, Map<String, dynamic>>> toDoList = {};
-  final TextEditingController toDoController = TextEditingController();
 
   @override
   void initState() {
@@ -22,13 +25,57 @@ class _Tab1State extends State<Tab1> {
     // Calculate the starting page as the number of weeks since a fixed reference Sunday
     initialPage = DateTime.now().difference(_getReferenceSunday()).inDays ~/ 7;
     selectedDay = DateTime.now(); // Default to today
+    _fetchToDoList();
   }
 
-  @override
-  void dispose() {
-    toDoController.dispose();
-    super.dispose();
+  Future<void> _fetchToDoList() async {
+    if (selectedDay == null) return;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos?date=${selectedDay!.toIso8601String()}'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          toDoList[selectedDay!] = Map<String, Map<String, dynamic>>.from(data);
+        });
+      } else {
+        print('Failed to fetch to-do list: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Error fetching to-do list: $error');
+    }
   }
+
+  Future<void> _updateToDoList() async {
+    // selectedDay가 null이면 오늘 날짜를 기본값으로 설정
+    final selectedDate = selectedDay ?? DateTime.now();
+
+    // YYYY-MM-DD 형식으로 날짜 포맷
+    final formattedDate = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'date': formattedDate, // 포맷된 날짜 사용
+          'toDoList': toDoList[selectedDate] ?? {}, // 데이터가 없으면 빈 맵 전달
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('Failed to update to-do list: ${response.statusCode}');
+      } else {
+        print('Successfully updated to-do list.');
+      }
+    } catch (error) {
+      print('Error updating to-do list: $error');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -198,15 +245,17 @@ class _Tab1State extends State<Tab1> {
                         int categoryIndex = 1;
                         String newCategoryName;
                         do {
-                          newCategoryName = "New Category $categoryIndex";
+                          newCategoryName = "카테고리 $categoryIndex";
                           categoryIndex++;
                         } while (categories.containsKey(newCategoryName));
 
                         categories[newCategoryName] = {
                           'isEditing': true,
+                          'isPublic': true,
                           'tasks': <Map<String, dynamic>>[], // Ensure the correct type
                         };
                       });
+                      _updateToDoList();
                     },
                     child: const Padding(
                       padding: EdgeInsets.all(8.0),
@@ -218,9 +267,11 @@ class _Tab1State extends State<Tab1> {
             }
 
             // Existing Category Cards
-            String category = categories.keys.elementAt(index);
-            bool isEditingCategory = categories[category]?['isEditing'] ?? false;
-            List<Map<String, dynamic>> tasks = categories[category]?['tasks'] ?? [];
+            String categoryName = categories.keys.elementAt(index);
+            String newName = categoryName;
+            bool isEditing = categories[categoryName]?['isEditing'] ?? false;
+            bool isPublic = categories[categoryName]?['isPublic'] ?? true;
+            List<Map<String, dynamic>> tasks = categories[categoryName]?['tasks'] ?? [];
 
             return Card(
               color: Colors.grey[200],
@@ -234,69 +285,87 @@ class _Tab1State extends State<Tab1> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Public/Private Icon
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              categories[categoryName]?['isPublic'] = !(categories[categoryName]?['isPublic'] ?? true);
+                            });
+                            _updateToDoList();
+                          },
+                          icon: Icon(
+                            isPublic ? Icons.public : Icons.lock,
+                          ),
+                        ),
                         // Category Name or Edit Field
-                        isEditingCategory
+                        isEditing
                             ? Expanded(
                           child: Focus( // Added Focus widget to detect unfocus
                             onFocusChange: (hasFocus) {
                               if (!hasFocus) {
                                 setState(() {
-                                  final newName = TextEditingController(text: category).text;
                                   if (newName.isNotEmpty && !categories.containsKey(newName)) {
                                     categories[newName] = {
                                       'isEditing': false,
-                                      'tasks': categories[category]?['tasks'] ?? [],
+                                      'isPublic': categories[categoryName]?['isPublic'] ?? true,
+                                      'tasks': categories[categoryName]?['tasks'] ?? [],
                                     };
-                                    categories.remove(category);
+                                    categories.remove(categoryName);
                                   } else {
-                                    categories[category]?['isEditing'] = false;
+                                    categories[categoryName]?['isEditing'] = false;
                                   }
                                 });
+                                _updateToDoList();
                               }
                             },
                             child: TextField(
                               autofocus: true,
-                              controller: TextEditingController(text: category),
-                              onSubmitted: (newName) {
-                                if (newName.isNotEmpty && !categories.containsKey(newName)) {
-                                  setState(() {
+                              controller: TextEditingController(text: categoryName),
+                              onSubmitted: (text) {
+                                newName = text;
+                                setState(() {
+                                  if (newName.isNotEmpty && !categories.containsKey(newName)) {
                                     categories[newName] = {
                                       'isEditing': false,
-                                      'tasks': categories[category]?['tasks'] ?? [],
+                                      'isPublic': categories[categoryName]?['isPublic'] ?? true,
+                                      'tasks': categories[categoryName]?['tasks'] ?? [],
                                     };
-                                    categories.remove(category);
-                                  });
-                                } else {
-                                  setState(() {
-                                    categories[category]?['isEditing'] = false;
-                                  });
-                                }
+                                    categories.remove(categoryName);
+                                  } else {
+                                    categories[categoryName]?['isEditing'] = false;
+                                  }
+                                });
+                                _updateToDoList();
+                              },
+                              onChanged: (text) {
+                                newName = text;
                               },
                               decoration: const InputDecoration(
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                                  borderSide: BorderSide(color: Color(0xFF18C971), width: 2.0),
                                 ),
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                                  borderSide: BorderSide.none,
                                 ),
                               ),
                             ),
                           ),
                         )
-                            : GestureDetector(
-                          onTap: () {
-                            _showCategoryMenu(context, categories, category, setState);
-                          },
-                          child: Text(
-                            category,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16.0,
+                            : Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              _showCategoryMenu(context, categories, categoryName, setState);
+                            },
+                            child: Text(
+                              categoryName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-
                         // Add (+) Button
                         IconButton(
                           onPressed: () {
@@ -307,6 +376,7 @@ class _Tab1State extends State<Tab1> {
                                 'isEditing': true,
                               });
                             });
+                            _updateToDoList();
                           },
                           icon: const Icon(Icons.add),
                           tooltip: 'Add Task',
@@ -316,58 +386,67 @@ class _Tab1State extends State<Tab1> {
                   ),
 
                   // Tasks for the Category
-                  ...tasks.map((task) => ListTile(
-                    leading: Checkbox(
-                      value: task['isCompleted'],
-                      onChanged: (value) {
-                        setState(() {
-                          task['isCompleted'] = value!;
-                        });
-                      },
-                      activeColor: Color(0xFF18C971),
-                    ),
-                    title: task['isEditing']
-                        ? Focus( // Added Focus widget to detect unfocus
-                      onFocusChange: (hasFocus) {
-                        if (!hasFocus) {
+                  ...tasks.map((task) {
+                    String newValue = task['text'];
+                    return ListTile(
+                      visualDensity: VisualDensity.compact,
+                      leading: Checkbox(
+                        value: task['isCompleted'],
+                        onChanged: (value) {
                           setState(() {
-                            final newValue = TextEditingController(text: task['text']).text;
-                            task['text'] = newValue;
-                            task['isEditing'] = false;
+                            task['isCompleted'] = value!;
                           });
-                        }
-                      },
-                      child: TextField(
-                        autofocus: true,
-                        controller: TextEditingController(text: task['text']),
-                        onSubmitted: (newValue) {
-                          setState(() {
-                            task['text'] = newValue;
-                            task['isEditing'] = false;
-                          });
+                          _updateToDoList();
                         },
-                        decoration: const InputDecoration(
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                        activeColor: Color(0xFF18C971),
+                      ),
+                      title: task['isEditing']
+                          ? Focus( // Added Focus widget to detect unfocus
+                        onFocusChange: (hasFocus) {
+                          if (!hasFocus) {
+                            setState(() {
+                              task['text'] = newValue;
+                              task['isEditing'] = false;
+                            });
+                            _updateToDoList();
+                          }
+                        },
+                        child: TextField(
+                          autofocus: true,
+                          controller: TextEditingController(text: task['text']),
+                          onSubmitted: (newValue) {
+                            setState(() {
+                              task['text'] = newValue;
+                              task['isEditing'] = false;
+                            });
+                            _updateToDoList();
+                          },
+                          onChanged: (text) {
+                            newValue = text;
+                          },
+                          decoration: const InputDecoration(
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFF18C971), width: 2.0),
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide.none,
+                            ),
                           ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF18C971), width: 1.0),
+                        ),
+                      )
+                          : GestureDetector(
+                        onTap: () => _showTaskMenu(context, tasks, tasks.indexOf(task)),
+                        child: Text(
+                          task['text'],
+                          style: TextStyle(
+                            color: task['isCompleted']
+                                ? Colors.grey
+                                : Colors.black,
                           ),
                         ),
                       ),
-                    )
-                        : GestureDetector(
-                      onTap: () => _showTaskMenu(context, tasks, tasks.indexOf(task)),
-                      child: Text(
-                        task['text'],
-                        style: TextStyle(
-                          decoration: task['isCompleted']
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                  )),
+                    );
+                  }),
                 ],
               ),
             );
@@ -404,37 +483,56 @@ class _Tab1State extends State<Tab1> {
   }
 
   void _showCategoryMenu(BuildContext context, Map<String, Map<String, dynamic>> categories,
-      String category, void Function(void Function()) setState) {
+      String categoryName, void Function(void Function()) setState) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       builder: (BuildContext context) {
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _modifyCategory(categories, category, setState);
-                },
-                icon: const Icon(Icons.edit),
-                label: const Text('Modify'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _modifyCategory(categories, categoryName, setState);
+                  },
+                  icon: const Icon(
+                    Icons.edit,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    '수정하기',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    categories.remove(category);
-                  });
-                },
-                icon: const Icon(Icons.delete),
-                label: const Text('Delete'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      categories.remove(categoryName);
+                    });
+                    _updateToDoList();
+                  },
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    '삭제하기',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
                 ),
               ),
             ],
@@ -444,44 +542,63 @@ class _Tab1State extends State<Tab1> {
     );
   }
 
-  void _modifyCategory(Map<String, Map<String, dynamic>> categories, String category,
+  void _modifyCategory(Map<String, Map<String, dynamic>> categories, String categoryName,
       void Function(void Function()) setState) {
     setState(() {
-      categories[category]?['isEditing'] = true;
+      categories[categoryName]?['isEditing'] = true;
     });
   }
 
   void _showTaskMenu(BuildContext context, List<Map<String, dynamic>> tasks, int index) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       builder: (BuildContext context) {
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _modifyTask(tasks, index);
-                },
-                icon: const Icon(Icons.edit),
-                label: const Text('Modify'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _modifyTask(tasks, index);
+                  },
+                  icon: const Icon(
+                    Icons.edit,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    '수정하기',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    tasks.removeAt(index);
-                  });
-                },
-                icon: const Icon(Icons.delete),
-                label: const Text('Delete'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      tasks.removeAt(index);
+                    });
+                    _updateToDoList();
+                  },
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    '삭제하기',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
                 ),
               ),
             ],

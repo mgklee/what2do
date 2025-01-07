@@ -1,8 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-// import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
-import 'dart:convert';
 
 class LoginScreen extends StatelessWidget {
   final VoidCallback onLoginSuccess;
@@ -14,52 +13,20 @@ class LoginScreen extends StatelessWidget {
     super.key,
   });
 
-  // // Google Sign-In 설정
-  // final GoogleSignIn _googleSignIn = GoogleSignIn(
-  //   clientId:
-  //   "358946647934-bmir594d3nbdj7mcgradov4ogrd74p1b.apps.googleusercontent.com",
-  //   scopes: [
-  //     'email', // Access the user's email
-  //     'https://www.googleapis.com/auth/userinfo.profile', // Access profile info
-  //   ],
-  // );
-  //
-  // // Google 로그인 처리
-  // Future<void> _handleGoogleSignIn() async {
-  //   try {
-  //     final GoogleSignInAccount? account = await _googleSignIn.signIn();
-  //     if (account != null) {
-  //       print('Logged in as: ${account.displayName}');
-  //       print('Email: ${account.email}');
-  //       onLoginSuccess();
-  //     } else {
-  //       print('Sign-In aborted by user.');
-  //     }
-  //   } catch (error) {
-  //     print('Error during Google Sign-In: $error');
-  //   }
-  // }
-
-  // Kakao 로그인 처리
   Future<void> _handleKakaoSignIn() async {
     try {
-      // 카카오톡 설치 여부 확인
       if (await isKakaoTalkInstalled()) {
-        // 카카오톡 앱을 통한 로그인
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoTalk();
-          print('Logged in with KakaoTalk: ${token.accessToken}');
-          await _sendTokenToBackend(token.accessToken); // Send token to backend
+          await _sendTokenToBackend(token.accessToken);
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoTalk Login: $error');
         }
       } else {
-        // 카카오 계정을 통한 로그인 (웹 뷰)
         try {
           OAuthToken token = await UserApi.instance.loginWithKakaoAccount();
-          print('Logged in with KakaoAccount: ${token.accessToken}');
-          await _sendTokenToBackend(token.accessToken); // Send token to backend
+          await _sendTokenToBackend(token.accessToken);
           onLoginSuccess();
         } catch (error) {
           print('Error during KakaoAccount Login: $error');
@@ -71,7 +38,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   Future<void> _sendTokenToBackend(String accessToken) async {
-    final url = Uri.parse("http://172.10.7.56:8000/users/login"); // Your backend endpoint
+    final url = Uri.parse("http://172.10.7.56:8000/users/login");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
@@ -80,8 +47,7 @@ class LoginScreen extends StatelessWidget {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(utf8.decode(response.bodyBytes));
-      print("Login successful: $responseData");
-      onBackendResponse(responseData); // Pass the response to the callback
+      onBackendResponse(responseData);
     } else {
       print("Login failed: ${response.body}");
     }
@@ -90,45 +56,85 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: PreferredSize(
-      //   preferredSize: const Size.fromHeight(80.0), // Custom height for the AppBar
-      //   child: Padding(
-      //     padding: const EdgeInsets.all(10.0), // Add padding
-      //     child: AppBar(
-      //       title: const Text(
-      //         'Login',
-      //         style: TextStyle(fontWeight: FontWeight.bold),
-      //       ),
-      //       backgroundColor: Colors.white,
-      //     ),
-      //   ),
-      // ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ElevatedButton(
-            //   onPressed: _handleGoogleSignIn,
-            //   child: const Text('Log in with Google'),
-            // ),
-            Text(
-              '서비스 사용을 위해',
-              style: TextStyle(fontSize: 20),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '서비스 사용을 위해',
+                  style: TextStyle(fontSize: 20, color: Colors.black54),
+                ),
+                const SizedBox(height: 8.0),
+                const Text(
+                  '로그인이 필요해요',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                const SizedBox(height: 40.0),
+                // 학번 입력 필드
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '카카오ID',
+                    hintText: 'enter your kakao ID',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+                // 비밀번호 입력 필드
+                TextField(
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: '비밀번호',
+                    hintText: 'enter your PW',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12.0),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      // 비밀번호 찾기 기능 추가
+                    },
+                    child: const Text(
+                      '비밀번호 찾기',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24.0),
+                ElevatedButton(
+                  onPressed: _handleKakaoSignIn,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow,
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.chat_bubble, color: Colors.black),
+                      SizedBox(width: 8.0),
+                      Text(
+                        'Login with Kakao',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Text(
-              '로그인이 필요해요',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _handleKakaoSignIn,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow, // 버튼 배경색
-                foregroundColor: Colors.black, // 버튼 텍스트 색상
-              ),
-              child: const Text('카카오로 로그인하기'),
-            ),
-          ],
+          ),
         ),
       ),
     );

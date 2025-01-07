@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 
@@ -43,6 +44,104 @@ Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
     throw Exception("Error fetching friends");
   }
 }
+
+class QRCodeScanner extends StatefulWidget {
+  final String userId; // 현재 사용자 ID
+
+  const QRCodeScanner({required this.userId, Key? key}) : super(key: key);
+
+  @override
+  _QRCodeScannerState createState() => _QRCodeScannerState();
+}
+
+class _QRCodeScannerState extends State<QRCodeScanner> {
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('QR 코드 스캔')),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            flex: 4,
+            child: QRView(
+              key: qrKey,
+              onQRViewCreated: _onQRViewCreated,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: const Text(
+                'QR 코드를 스캔하여 친구를 추가하세요.',
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    this.controller = controller;
+    controller.scannedDataStream.listen((scanData) {
+      _handleQRCode(scanData.code);
+    });
+  }
+
+  Future<void> _handleQRCode(String? qrCodeData) async {
+    if (qrCodeData == null) {
+      print('QR 코드 데이터가 없습니다.');
+      return;
+    }
+
+    try {
+      // QR 코드 데이터를 JSON으로 파싱
+      final qrJson = jsonDecode(qrCodeData);
+      final qrUserId = qrJson['user_id'];
+
+      // 서버로 요청 보내기
+      final response = await http.post(
+        Uri.parse('http://172.10.7.56:8000/friends'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "scanned_user_id": widget.userId,
+          "qr_user_id": qrUserId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 친구 추가 성공
+        print('친구 추가 성공: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('친구가 성공적으로 추가되었습니다.')),
+        );
+        Navigator.of(context).pop(); // 스캔 화면 종료
+      } else {
+        // 실패 메시지 출력
+        print('친구 추가 실패: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('친구 추가에 실패했습니다. 다시 시도해주세요.')),
+        );
+      }
+    } catch (e) {
+      print('QR 코드 처리 중 오류 발생: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('QR 코드 처리 중 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+}
+
 
 class _Tab4State extends State<Tab4> {
   int currentPageOffset = 3;
@@ -108,7 +207,34 @@ class _Tab4State extends State<Tab4> {
                           ),
                         ),
                         onTap: () {
-                          showAddFriendDialog(userId);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => QRCodeScanner(userId: userId),
+                            ),
+                          );
+                        },
+                        trailing: const Icon(Icons.camera_alt, color: Color(0xFF777777)), // 사진 아이콘 추가
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Divider(
+                          color: Color(0xFFBDBDBD),
+                          thickness: 1,
+                        ),
+                      ),
+                      // 내 QR 코드
+                      ListTile(
+                        title: const Text(
+                          '내 QR 코드',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF777777),
+                          ),
+                        ),
+                        onTap: () {
+                          showAddFriendDialog(userId); // 내 QR 코드를 보여주는 다이얼로그 호출
                         },
                       ),
                       const Padding(
@@ -272,7 +398,7 @@ class _Tab4State extends State<Tab4> {
                 ),
                 const SizedBox(height: 16.0),
                 QrImageView(
-                  data: '{"userId": "$userId"}', // QR 코드에 넣을 데이터
+                  data: jsonEncode({"user_id": userId}), // QR 코드 데이터
                   version: QrVersions.auto, // QR 코드 버전 자동
                   size: 200.0, // QR 코드 크기
                 ),

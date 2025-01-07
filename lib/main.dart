@@ -63,14 +63,14 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   @override
   Widget build(BuildContext context) {
     return isLoggedIn
-      ? HomePage(
-          userInfo: userInfo,
-          onLogout: _onLogout, // Pass logout callback to the main app screen
-        )
-      : LoginScreen(
-          onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
-          onBackendResponse: _onBackendResponse, // Handle backend response
-        );
+        ? HomePage(
+      userInfo: userInfo,
+      onLogout: _onLogout, // Pass logout callback to the main app screen
+    )
+        : LoginScreen(
+      onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
+      onBackendResponse: _onBackendResponse, // Handle backend response
+    );
   }
 }
 
@@ -99,8 +99,8 @@ class _HomePageState extends State<HomePage> {
   ];
 
   late List<Widget> tabs = [
-    Tab1(),
-    Tab2(),
+    Tab1(userInfo: widget.userInfo),
+    Tab2(userInfo: widget.userInfo),
     Tab3(userInfo: widget.userInfo),
     Tab4(userInfo: widget.userInfo, onLogout: widget.onLogout),
   ];
