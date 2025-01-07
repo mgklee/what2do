@@ -74,7 +74,7 @@ def get_todos_by_friends(db: Session, user_id: int, limit: int = 10, offset: int
         # 해당 친구의 모든 todos 가져오기
         todos = db.query(Todo).filter(
             Todo.user_id == friend.id,
-            Todo.is_locked == True
+            Todo.is_locked == False
         ).all()
 
         # 3. 카테고리별로 그룹화

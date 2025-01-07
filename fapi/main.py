@@ -94,7 +94,8 @@ def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)
 
     for todo in todos:
         category = todo.category
-        result[category] = {}
+        if category not in result:
+            result[category] = {}
         result[category]["isEditing"] = False
         result[category]["isPublic"] = not todo.is_locked
         if "tasks" not in result[category]:
@@ -116,8 +117,8 @@ def parse_and_store_todos(user_id: int, data: dict, db: Session):
     date_str = data.get("date")
     to_do_list = data.get("toDoList")
 
-    if not date_str or not to_do_list:
-        raise HTTPException(status_code=400, detail="Both 'date' and 'toDoList' are required.")
+    if not date_str:
+        raise HTTPException(status_code=400, detail="'date' is required.")
 
 # 날짜 파싱
     try:
