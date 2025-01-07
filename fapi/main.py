@@ -70,7 +70,7 @@ def login_or_register_with_kakao(token: OAuthToken, db: Session = Depends(get_db
 
 # 할 일 불러오기기
 @app.get("/users/{user_id}/todos")
-def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)) -> Dict[str, Dict[str, Dict]]:
+def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)) -> Dict[str, Dict]:
 
 
     # 1. DB에서 사용자와 관련된 TODO 데이터 가져오기
@@ -88,38 +88,24 @@ def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)
 
     # 2. 데이터가 없을 경우 빈 데이터 반환
     if not todos:
-        print("aa")
         return {}
 
-    # 3. 데이터를 프론트엔드 요구 형식으로 변환
-    response_data = defaultdict(lambda: defaultdict(lambda: {"isPublic": True, "tasks": []}))
-    for todo in todos:
-        # 날짜를 DateTime 형식으로 변환
-        todo_date = todo.date_created  # DateTime 객체 그대로 사용
-        category = todo.category
+    result = {}
 
-        # 카테고리 데이터 추가
-        response_data[todo_date][category]["isPublic"] = not todo.is_locked
-        response_data[todo_date][category]["tasks"].append({
-            "id": todo.id,
-            "user_id": todo.user_id,
-            "task": todo.task,
+    for todo in todos:
+        category = todo.category
+        result[category] = {}
+        result[category]["isEditing"] = False
+        result[category]["isPublic"] = not todo.is_locked
+        if "tasks" not in result[category]:
+            result[category]["tasks"] = []
+        result[category]["tasks"].append({
+            "text": todo.task,
             "isCompleted": todo.is_completed,
+            "isEditing": False
         })
 
-    # 4. defaultdict를 일반 dict로 변환
-    response_data_dict = {
-        date.isoformat(): {  # DateTime 객체를 ISO 8601 문자열로 변환
-            category: dict(data)
-            for category, data in categories.items()
-        }
-        for date, categories in response_data.items()
-    }
-
-    print(response_data_dict)
-
-    # 5. 변환된 데이터 반환
-    return response_data_dict
+    return result
 
 
 # 할 일 업데이트 엔드포인트 - 데이터 파싱 추가
@@ -204,7 +190,7 @@ def get_friends_todos(
 
     if not todos:
         raise HTTPException(status_code=404, detail="No todos found for the user's friends")
-    
+
     return todos
 
 # 개인 friend 목록 볼 수 있는 tab4 의 엔드포인트 정리
@@ -217,7 +203,7 @@ def get_user_friends(user_id: int, db: Session = Depends(get_db)):
     friends = db.query(Friend).filter(Friend.user_id == user_id).all()
     if not friends:
         raise HTTPException(status_code=404, detail="No friends found for the user")
-    
+
     # 친구 목록 데이터를 반환
     friend_list = []
     for friend in friends:
