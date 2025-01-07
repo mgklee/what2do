@@ -111,11 +111,14 @@ class _HomePageState extends State<HomePage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60), // Custom height for the AppBar
         child: AppBar(
-          title: Text(
-            _titles[_currentIndex], // Update title based on current index
-            style: const TextStyle(
-              color: Color(0xFF333333),
-              fontWeight: FontWeight.bold,
+          title: Padding(
+            padding: const EdgeInsets.only(top: 15, left: 5),
+            child: Text(
+              _titles[_currentIndex], // Update title based on current index
+              style: const TextStyle(
+                color: Color(0xFF333333),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           backgroundColor: Colors.white,

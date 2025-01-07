@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,7 +18,7 @@ class _Tab1State extends State<Tab1> {
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
   int currentPageOffset = 0; // Tracks the current week offset
-  Map<DateTime, Map<String, Map<String, dynamic>>> toDoList = {};
+  Map<String, Map<String, Map<String, dynamic>>> toDoList = {};
 
   @override
   void initState() {
@@ -29,17 +30,20 @@ class _Tab1State extends State<Tab1> {
   }
 
   Future<void> _fetchToDoList() async {
-    if (selectedDay == null) return;
+    // selectedDay가 null이면 오늘 날짜를 기본값으로 설정
+    final selectedDate = selectedDay ?? DateTime.now();
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos?date=${selectedDay!.toIso8601String()}'),
+        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        print(data.runtimeType);
         setState(() {
-          toDoList[selectedDay!] = Map<String, Map<String, dynamic>>.from(data);
+          toDoList[DateFormat('yyyy-MM-dd').format(selectedDay!)] = Map<String, Map<String, dynamic>>.from(data);
+          print(toDoList);
         });
       } else {
         print('Failed to fetch to-do list: ${response.statusCode}');
@@ -49,12 +53,13 @@ class _Tab1State extends State<Tab1> {
     }
   }
 
+
   Future<void> _updateToDoList() async {
     // selectedDay가 null이면 오늘 날짜를 기본값으로 설정
     final selectedDate = selectedDay ?? DateTime.now();
 
     // YYYY-MM-DD 형식으로 날짜 포맷
-    final formattedDate = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+    final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
 
     try {
       final response = await http.put(
@@ -62,20 +67,19 @@ class _Tab1State extends State<Tab1> {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'date': formattedDate, // 포맷된 날짜 사용
-          'toDoList': toDoList[selectedDate] ?? {}, // 데이터가 없으면 빈 맵 전달
+          'toDoList': toDoList[formattedDate] ?? {}, // 데이터가 없으면 빈 맵 전달
         }),
       );
 
       if (response.statusCode != 200) {
         print('Failed to update to-do list: ${response.statusCode}');
       } else {
-        print('Successfully updated to-do list.');
+        print('Successfully updated to-do list. $toDoList');
       }
     } catch (error) {
       print('Error updating to-do list: $error');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +168,7 @@ class _Tab1State extends State<Tab1> {
                                 setState(() {
                                   selectedDay = day; // Update the selected day
                                 });
+                                _fetchToDoList(); // Fetch data for the selected day
                               },
                               child: Column(
                                 children: [
@@ -219,7 +224,7 @@ class _Tab1State extends State<Tab1> {
   Widget _buildToDoList() {
     if (selectedDay == null) return const SizedBox();
 
-    DateTime key = DateTime(selectedDay!.year, selectedDay!.month, selectedDay!.day);
+    String key = DateFormat('yyyy-MM-dd').format(selectedDay!);
     toDoList[key] ??= {}; // Initialize categories for the day if not present
     Map<String, Map<String, dynamic>> categories = toDoList[key]!;
 
@@ -252,7 +257,7 @@ class _Tab1State extends State<Tab1> {
                         categories[newCategoryName] = {
                           'isEditing': true,
                           'isPublic': true,
-                          'tasks': <Map<String, dynamic>>[], // Ensure the correct type
+                          'tasks': <dynamic>[], // Ensure the correct type
                         };
                       });
                       _updateToDoList();
@@ -271,7 +276,7 @@ class _Tab1State extends State<Tab1> {
             String newName = categoryName;
             bool isEditing = categories[categoryName]?['isEditing'] ?? false;
             bool isPublic = categories[categoryName]?['isPublic'] ?? true;
-            List<Map<String, dynamic>> tasks = categories[categoryName]?['tasks'] ?? [];
+            List<dynamic> tasks = categories[categoryName]?['tasks'] ?? [];
 
             return Card(
               color: Colors.grey[200],
@@ -300,7 +305,7 @@ class _Tab1State extends State<Tab1> {
                         // Category Name or Edit Field
                         isEditing
                             ? Expanded(
-                          child: Focus( // Added Focus widget to detect unfocus
+                          child: Focus(
                             onFocusChange: (hasFocus) {
                               if (!hasFocus) {
                                 setState(() {
@@ -401,7 +406,7 @@ class _Tab1State extends State<Tab1> {
                         activeColor: Color(0xFF18C971),
                       ),
                       title: task['isEditing']
-                          ? Focus( // Added Focus widget to detect unfocus
+                          ? Focus(
                         onFocusChange: (hasFocus) {
                           if (!hasFocus) {
                             setState(() {
@@ -439,9 +444,7 @@ class _Tab1State extends State<Tab1> {
                         child: Text(
                           task['text'],
                           style: TextStyle(
-                            color: task['isCompleted']
-                                ? Colors.grey
-                                : Colors.black,
+                            color: task['isCompleted'] ? Colors.grey : Colors.black,
                           ),
                         ),
                       ),
@@ -549,7 +552,7 @@ class _Tab1State extends State<Tab1> {
     });
   }
 
-  void _showTaskMenu(BuildContext context, List<Map<String, dynamic>> tasks, int index) {
+  void _showTaskMenu(BuildContext context, List<dynamic> tasks, int index) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -608,7 +611,7 @@ class _Tab1State extends State<Tab1> {
     );
   }
 
-  void _modifyTask(List<Map<String, dynamic>> tasks, int index) {
+  void _modifyTask(List<dynamic> tasks, int index) {
     setState(() {
       tasks[index]['isEditing'] = true;
     });
