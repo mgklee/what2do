@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models import User,Todo, Friend
 from typing import Optional
+from fastapi import HTTPException
 
 #카카오 로그인 및 회원 가입 관련 crud 정리
 def get_user_by_kakao_id(db: Session, kakao_id: str) -> Optional[User]:
@@ -101,28 +102,30 @@ def get_todos_by_friends(db: Session, user_id: int, limit: int = 10, offset: int
 
 #friend 테이블 관련 crud 정리
 
-def create_friend(db: Session, user_id: int, friend_id: int):
-    """
-    친구 추가
-    """
-    if user_id == friend_id:
+def add_friend(db: Session, scanned_user_id: int, qr_user_id: int):
+    # 1. 자기 자신 추가 방지
+    if scanned_user_id == qr_user_id:
         raise HTTPException(status_code=400, detail="You cannot add yourself as a friend.")
 
-    # 중복된 관계 확인
-    existing_friendship = db.query(Friend).filter_by(user_id=user_id, friend_id=friend_id).first()
+    # 2. 중복 친구 관계 확인
+    existing_friendship = db.query(Friend).filter(
+        Friend.user_id == scanned_user_id,
+        Friend.friend_id == qr_user_id
+    ).first()
+
     if existing_friendship:
         raise HTTPException(status_code=400, detail="Friendship already exists.")
 
-    # 새로운 친구 관계 추가
-    new_friend1 = Friend(user_id=user_id, friend_id=friend_id)
-    new_friend2 = Friend(user_id=friend_id, friend_id=user_id)
-    db.add(new_friend1)
-    db.add(new_friend2)
+    # 3. 양방향 친구 관계 추가
+    new_friend_1 = Friend(user_id=scanned_user_id, friend_id=qr_user_id)
+    new_friend_2 = Friend(user_id=qr_user_id, friend_id=scanned_user_id)
+    db.add(new_friend_1)
+    db.add(new_friend_2)
     db.commit()
-    db.refresh(new_friend1)
-    db.refresh(new_friend2)
-    
-    return new_friend
+    db.refresh(new_friend_1)
+    db.refresh(new_friend_2)
+
+    return {"message": "Friendship created successfully."}
 
 
 def get_friends_by_user_id(db: Session, user_id: int):

@@ -60,3 +60,15 @@ class Friend(Base):
     # Relationship 정의
     user = relationship("User", foreign_keys=[user_id], backref="friends")  # 현재 사용자
     friend = relationship("User", foreign_keys=[friend_id])  # 친구 사용자
+
+# class Timetable(Base):
+#     __tablename__="Timetable"
+
+#     """일단 이 테이블은 ㅇㅇ"""
+#     #필드 정의
+#     id = Column(Integer, primary_key=True, index=True)
+#     year = Column(Integar)
+#     season = Column(Integar)
+#     url = 
+
+
