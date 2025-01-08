@@ -39,18 +39,45 @@ class _Tab3State extends State<Tab3> {
 
     try {
       final response = await http.get(
-        Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/friends/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}')
+        Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/friends/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
       );
 
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${jsonDecode(utf8.decode(response.bodyBytes))}'); // UTF-8 디코딩된 응답 본문 출력
 
       if (response.statusCode == 200) {
+        // 응답 데이터를 디코드
+        final List<Map<String, dynamic>> allFriends = List<Map<String, dynamic>>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)),
+        );
+
+        print('All Friends Todos: $allFriends'); // 전체 데이터를 출력
+
+        // task가 null이 아닌 친구 데이터만 필터링
+        final filteredFriends = allFriends.where((friend) {
+          final List<dynamic>? categories = friend['categories'] as List<dynamic>?;
+          if (categories != null && categories.isNotEmpty) {
+            return categories.any((category) {
+              final List<dynamic>? todos = category['todos'] as List<dynamic>?;
+              if (todos != null && todos.isNotEmpty) {
+                return todos.any((todo) {
+                  return todo['task'] != null && todo['task'].toString().trim().isNotEmpty;
+                });
+              }
+              return false;
+            });
+          }
+          return false; // categories가 비어 있으면 제외
+        }).toList();
+
+        print('Filtered Friends: $filteredFriends'); // 필터링된 데이터를 출력
+
+        // 필터링된 데이터를 상태로 설정
         setState(() {
-          friendsTodos = List<Map<String, dynamic>>.from(
-            jsonDecode(utf8.decode(response.bodyBytes)) // UTF-8 디코딩 후 JSON 디코딩
-          );
+          friendsTodos = filteredFriends;
         });
+
+        print('Updated FriendsTodos: $friendsTodos'); // 업데이트된 상태 확인
       } else {
         throw Exception('Failed to load todos');
       }
@@ -68,109 +95,116 @@ class _Tab3State extends State<Tab3> {
           // Fixed Weekly Calendar
           _buildWeeklyCalendar(context),
 
-          ...friendsTodos.map((element) {
-            final friendTodos = element;
-            final nickname = friendTodos['nickname'];
-            final profileImage = friendTodos['profile_image'];
-            final categories = List<Map<String, dynamic>>.from(friendTodos['categories']);
+          Expanded(
+            child: ListView(
+              children: [
+                ...friendsTodos.map((element) {
+                  final friendTodos = element;
+                  final nickname = friendTodos['nickname'];
+                  final profileImage = friendTodos['profile_image'];
+                  final categories = List<Map<String, dynamic>>.from(friendTodos['categories']);
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundImage: profileImage != null
-                        ? NetworkImage(profileImage)
-                        : null,
-                        child: profileImage == null
-                        ? const Icon(Icons.person, size: 30)
-                        : null,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        nickname ?? "Unknown",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundImage: profileImage != null
+                                  ? NetworkImage(profileImage)
+                                  : null,
+                              child: profileImage == null
+                                  ? const Icon(Icons.person, size: 23)
+                                  : null,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              nickname ?? "Unknown",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // 카테고리별 카드 가로 스크롤
-                  SizedBox(
-                    height: 150,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: categories.length,
-                      itemBuilder: (context, categoryIndex) {
-                        final category = categories[categoryIndex];
-                        final todos = List<Map<String, dynamic>>.from(category['todos']);
-                        return Container(
-                          padding: const EdgeInsets.all(8.0),
-                          width: 200,
-                          decoration: BoxDecoration(
-                            color: Color(0xFFF7F7F7),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.shade400,
-                                offset: Offset(2, 2),
-                                blurRadius: 5,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 카테고리 제목
-                              Text(
-                                category['category'] ?? "Unknown",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                        const SizedBox(height: 20),
+                        // 카테고리별 카드 가로 스크롤
+                        SizedBox(
+                          height: 150,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length,
+                            itemBuilder: (context, categoryIndex) {
+                              final category = categories[categoryIndex];
+                              final todos = List<Map<String, dynamic>>.from(category['todos']);
+                              return Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding: const EdgeInsets.all(8.0),
+                                width: 200,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFF7F7F7), // Fill color
+                                  borderRadius: BorderRadius.circular(10), // Rounded corners
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0x339DA5A0), // Shadow color with 20% opacity
+                                      offset: Offset(2, 2), // X: 2, Y: 2
+                                      blurRadius: 2, // Blur radius
+                                      spreadRadius: 0, // Spread radius
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              // 카테고리 내 할 일
-                              Expanded(
-                                child: ListView.builder(
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: todos.length,
-                                  itemBuilder: (context, todoIndex) {
-                                    final todo = todos[todoIndex];
-                                    return Row(
-                                      children: [
-                                        todo['isCompleted']
-                                        ? const Icon(Icons.check_box, size: 16)
-                                        : const Icon(Icons.check_box_outline_blank, size: 16),
-                                        const SizedBox(width: 5),
-                                        Expanded(
-                                          child: Text(
-                                            todo['task'] ?? "No Task",
-                                            style: const TextStyle(fontSize: 14),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 카테고리 제목
+                                    Text(
+                                      category['category'] ?? "Unknown",
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // 카테고리 내 할 일
+                                    Expanded(
+                                      child: ListView.builder(
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: todos.length,
+                                        itemBuilder: (context, todoIndex) {
+                                          final todo = todos[todoIndex];
+                                          return Row(
+                                            children: [
+                                              todo['isCompleted']
+                                              ? const Icon(Icons.check_box, size: 16)
+                                              : const Icon(Icons.check_box_outline_blank, size: 16),
+                                              const SizedBox(width: 5),
+                                              Expanded(
+                                                child: Text(
+                                                  todo['task'] ?? "No Task",
+                                                  style: const TextStyle(fontSize: 15),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          })
+                  );
+                }),
+              ],
+            ),
+          ),
         ],
       ),
     );

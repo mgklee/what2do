@@ -214,7 +214,7 @@ class _Tab4State extends State<Tab4> {
                         ),
                       ),
                       ListTile(
-                        title: const Text('이용약관 동의'),
+                        title: const Text('이용약관'),
                         trailing: TextButton(
                           onPressed: () {
                             dialog1();
@@ -286,8 +286,8 @@ class _Tab4State extends State<Tab4> {
         return AlertDialog(
           backgroundColor: Colors.white,
           title: const Text(
-            '친구 추가',
-            style: TextStyle(fontSize: 18),
+            '내 QR 코드',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
@@ -337,7 +337,7 @@ class _Tab4State extends State<Tab4> {
             backgroundColor: Colors.white,
             title: const Text(
               '친구 목록',
-              style: TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
               height: 300,
@@ -551,7 +551,13 @@ class _QRCodeScannerState extends State<QRCodeScanner> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('QR 코드 스캔')),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: const Text(
+          'QR 코드 스캔',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: Column(
         children: <Widget>[
           Expanded(

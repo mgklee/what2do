@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'login_screen.dart';
-import 'tab1/tab1.dart';
-import 'tab2/tab2.dart';
-import 'tab3/tab3.dart';
-import 'tab4/tab4.dart';
+import 'tabs/tab1.dart';
+import 'tabs/tab2.dart';
+import 'tabs/tab3.dart';
+import 'tabs/tab4.dart';
 import 'splash_screen.dart';
 
 void main() {

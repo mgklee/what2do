@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -28,7 +29,9 @@ class _Tab2State extends State<Tab2> {
   @override
   void initState() {
     super.initState();
+    ids.add(widget.userInfo['id']);
     _fetchBinaryList();
+    _loadFriends();
   }
 
   // URL 제출 함수
@@ -89,7 +92,9 @@ class _Tab2State extends State<Tab2> {
           binaryList = List<List<int>>.from(
             responseData['array'].map((row) => List<int>.from(row)),
           );
-          print('binaryList loaded\n$binaryList');
+          for(int i = 0; i < 56; i++) {
+              print(binaryList[i]);
+            }
         });
       } else {
         print('Failed to fetch timetable: ${response.body}');
@@ -132,7 +137,7 @@ class _Tab2State extends State<Tab2> {
   }
 
   // 친구 목록 API 호출 함수
-  Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
+  Future<List<Map<String, dynamic>>> fetchFriends(int userId) async {
     final url = Uri.parse('${widget.baseUrl}/users/$userId/friends');
     try {
       final response = await http.get(
@@ -227,7 +232,7 @@ class _Tab2State extends State<Tab2> {
                               width: cellWidth,
                               height: headerHeight,
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
+                                border: Border.all(color: Colors.grey[300]!),
                               ),
                               child: Center(child: Text('')),
                             ),
@@ -237,9 +242,9 @@ class _Tab2State extends State<Tab2> {
                                 height: headerHeight,
                                 decoration: BoxDecoration(
                                   border: Border(
-                                    top: BorderSide(color: Colors.grey, width: 1),
-                                    right: BorderSide(color: Colors.grey, width: 1),
-                                    bottom: BorderSide(color: Colors.grey, width: 1),
+                                    top: BorderSide(color: Colors.grey[300]!, width: 1),
+                                    right: BorderSide(color: Colors.grey[300]!, width: 1),
+                                    bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                                   ),
                                 ),
                                 child: Center(child: Text(day, style: TextStyle(fontWeight: FontWeight.bold))),
@@ -259,9 +264,9 @@ class _Tab2State extends State<Tab2> {
                                         height: cellHeight * 4,
                                         decoration: BoxDecoration(
                                           border: Border(
-                                            left: BorderSide(color: Colors.grey, width: 1),
-                                            right: BorderSide(color: Colors.grey, width: 1),
-                                            bottom: BorderSide(color: Colors.grey, width: 1),
+                                            left: BorderSide(color: Colors.grey[300]!, width: 1),
+                                            right: BorderSide(color: Colors.grey[300]!, width: 1),
+                                            bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                                           ),
                                         ),
                                         child: Align(
@@ -285,14 +290,12 @@ class _Tab2State extends State<Tab2> {
                                                   width: cellWidth,
                                                   height: cellHeight,
                                                   decoration: BoxDecoration(
-                                                    color: binaryList[rowIndex][colIndex] == 1
-                                                        ? Color(0xFF18C971)
-                                                        : Colors.white,
+                                                    color: Color.fromRGBO(24, 201, 113, min(0.2*binaryList[rowIndex][colIndex], 1)),
                                                     border: Border(
-                                                      right: BorderSide(color: Colors.grey, width: 1.0),
+                                                      right: BorderSide(color: Colors.grey[300]!, width: 1.0),
                                                       bottom: rowOffset == 3
-                                                          ? BorderSide(color: Colors.grey, width: 1.0)
-                                                          : BorderSide.none,
+                                                      ? BorderSide(color: Colors.grey[300]!, width: 1.0)
+                                                      : BorderSide.none,
                                                     ),
                                                   ),
                                                 ),
@@ -302,7 +305,7 @@ class _Tab2State extends State<Tab2> {
                                       )
                                     ],
                                   ),
-                                  Divider(height: 0, thickness: 1, color: Colors.grey),
+                                  Divider(height: 0, thickness: 1, color: Colors.grey[300]!),
                                 ],
                               );
                             },
@@ -357,11 +360,17 @@ class _Tab2State extends State<Tab2> {
                       itemBuilder: (context, index) {
                         final friend = friends[index];
                         return ListTile(
-                          leading: Checkbox(
-                            value: friend['isSelected'],
-                            onChanged: (bool? value) {
+                          leading: Switch(
+                            value: ids.contains(friend['id']),
+                            onChanged: (bool value) {
                               setState(() {
-                                friends[index]['isSelected'] = value!;
+                                if (value) {
+                                  ids.add(friend['id']);
+                                } else {
+                                  ids.remove(friend['id']);
+                                }
+                                print(ids);
+                                _fetchBinaryList();
                               });
                             },
                           ),
