@@ -95,7 +95,7 @@ class _HomePageState extends State<HomePage> {
     'Home',
     'Timetable',
     'Friends',
-    'Mypage',
+    'My Page',
   ];
 
   late List<Widget> tabs = [

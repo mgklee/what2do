@@ -13,7 +13,7 @@ class Tab1 extends StatefulWidget {
 }
 
 class _Tab1State extends State<Tab1> {
-  final String baseUrl = 'http://172.10.7.56:8000';
+  final String baseUrl = 'http://172.10.7.57:8000';
   final List<String> weekDays = ['일', '월', '화', '수', '목', '금', '토']; // Fixed week days
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
@@ -40,10 +40,8 @@ class _Tab1State extends State<Tab1> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        print(data.runtimeType);
         setState(() {
           toDoList[DateFormat('yyyy-MM-dd').format(selectedDay!)] = Map<String, Map<String, dynamic>>.from(data);
-          print(toDoList);
         });
       } else {
         print('Failed to fetch to-do list: ${response.statusCode}');
@@ -52,7 +50,6 @@ class _Tab1State extends State<Tab1> {
       print('Error fetching to-do list: $error');
     }
   }
-
 
   Future<void> _updateToDoList() async {
     // selectedDay가 null이면 오늘 날짜를 기본값으로 설정
@@ -90,12 +87,12 @@ class _Tab1State extends State<Tab1> {
         body: Column(
           children: [
             // Fixed Weekly Calendar
-            _buildWeeklyCalendar(),
+            _buildWeeklyCalendar(context),
 
             // Scrollable To-Do List
             Expanded(
               child: SingleChildScrollView(
-                child: _buildToDoList(),
+                child: _buildToDoList(context),
               ),
             ),
           ],
@@ -104,7 +101,7 @@ class _Tab1State extends State<Tab1> {
     );
   }
 
-  Widget _buildWeeklyCalendar() {
+  Widget _buildWeeklyCalendar(BuildContext context) {
     return Column(
       children: [
         // Display the week number
@@ -135,10 +132,10 @@ class _Tab1State extends State<Tab1> {
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                             color: index == 0
-                                ? Colors.red // Sunday is red
-                                : index == 6
-                                ? Colors.blue // Saturday is blue
-                                : Colors.black,
+                            ? Colors.red // Sunday is red
+                            : index == 6
+                            ? Colors.blue // Saturday is blue
+                            : Colors.black,
                           ),
                         ),
                       ),
@@ -193,12 +190,12 @@ class _Tab1State extends State<Tab1> {
                                           style: TextStyle(
                                             fontSize: 18,
                                             color: _isSelected(day)
-                                                ? Colors.white
-                                                : (index == 0
-                                                ? Colors.red
-                                                : index == 6
-                                                ? Colors.blue
-                                                : Colors.black),
+                                            ? Colors.white
+                                            : (index == 0
+                                            ? Colors.red
+                                            : index == 6
+                                            ? Colors.blue
+                                            : Colors.black),
                                           ),
                                         ),
                                       ],
@@ -221,7 +218,7 @@ class _Tab1State extends State<Tab1> {
     );
   }
 
-  Widget _buildToDoList() {
+  Widget _buildToDoList(BuildContext context) {
     if (selectedDay == null) return const SizedBox();
 
     String key = DateFormat('yyyy-MM-dd').format(selectedDay!);
@@ -240,7 +237,7 @@ class _Tab1State extends State<Tab1> {
             // (+) Button Card
             if (index == categories.keys.length) {
               return Card(
-                color: Colors.grey[200],
+                color: Color(0xFFF7F7F7),
                 margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                 child: Center(
                   child: InkWell(
@@ -279,7 +276,7 @@ class _Tab1State extends State<Tab1> {
             List<dynamic> tasks = categories[categoryName]?['tasks'] ?? [];
 
             return Card(
-              color: Colors.grey[200],
+              color: Color(0xFFF7F7F7),
               margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: Column(
                 children: [
@@ -304,7 +301,7 @@ class _Tab1State extends State<Tab1> {
                         ),
                         // Category Name or Edit Field
                         isEditing
-                            ? Expanded(
+                        ? Expanded(
                           child: Focus(
                             onFocusChange: (hasFocus) {
                               if (!hasFocus) {
@@ -356,7 +353,7 @@ class _Tab1State extends State<Tab1> {
                             ),
                           ),
                         )
-                            : Expanded(
+                        : Expanded(
                           child: GestureDetector(
                             onTap: () {
                               _showCategoryMenu(context, categories, categoryName, setState);
@@ -376,7 +373,7 @@ class _Tab1State extends State<Tab1> {
                           onPressed: () {
                             setState(() {
                               tasks.add({
-                                'text': "New Task ${tasks.length + 1}",
+                                'text': "할 일 ${tasks.length + 1}",
                                 'isCompleted': false,
                                 'isEditing': true,
                               });
@@ -384,7 +381,7 @@ class _Tab1State extends State<Tab1> {
                             _updateToDoList();
                           },
                           icon: const Icon(Icons.add),
-                          tooltip: 'Add Task',
+                          tooltip: '할 일 추가하기',
                         ),
                       ],
                     ),
@@ -406,7 +403,7 @@ class _Tab1State extends State<Tab1> {
                         activeColor: Color(0xFF18C971),
                       ),
                       title: task['isEditing']
-                          ? Focus(
+                      ? Focus(
                         onFocusChange: (hasFocus) {
                           if (!hasFocus) {
                             setState(() {
@@ -439,7 +436,7 @@ class _Tab1State extends State<Tab1> {
                           ),
                         ),
                       )
-                          : GestureDetector(
+                      : GestureDetector(
                         onTap: () => _showTaskMenu(context, tasks, tasks.indexOf(task)),
                         child: Text(
                           task['text'],
