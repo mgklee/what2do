@@ -39,6 +39,7 @@ class AppEntryPoint extends StatefulWidget {
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   bool isLoggedIn = false; // Tracks if the user is logged in
+  final String baseUrl = 'http://172.10.7.57:8000';
   late Map<String, dynamic> userInfo; // Store backend response data
 
   // Simulate login logic (can be replaced with real authentication logic)
@@ -64,10 +65,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   Widget build(BuildContext context) {
     return isLoggedIn
         ? HomePage(
+      baseUrl: baseUrl,
       userInfo: userInfo,
       onLogout: _onLogout, // Pass logout callback to the main app screen
     )
         : LoginScreen(
+      baseUrl: baseUrl,
       onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
       onBackendResponse: _onBackendResponse, // Handle backend response
     );
@@ -75,10 +78,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 }
 
 class HomePage extends StatefulWidget {
+  final String baseUrl;
   final Map<String, dynamic> userInfo; // Store backend response data
   final VoidCallback onLogout; // Callback for logout
 
   const HomePage({
+    required this.baseUrl,
     required this.userInfo,
     required this.onLogout,
     super.key
@@ -99,10 +104,10 @@ class _HomePageState extends State<HomePage> {
   ];
 
   late List<Widget> tabs = [
-    Tab1(userInfo: widget.userInfo),
-    Tab2(userInfo: widget.userInfo),
-    Tab3(userInfo: widget.userInfo),
-    Tab4(userInfo: widget.userInfo, onLogout: widget.onLogout),
+    Tab1(baseUrl: widget.baseUrl, userInfo: widget.userInfo),
+    Tab2(baseUrl: widget.baseUrl, userInfo: widget.userInfo),
+    Tab3(baseUrl: widget.baseUrl, userInfo: widget.userInfo),
+    Tab4(baseUrl: widget.baseUrl, userInfo: widget.userInfo, onLogout: widget.onLogout),
   ];
 
   @override

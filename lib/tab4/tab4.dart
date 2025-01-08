@@ -5,10 +5,12 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 
 class Tab4 extends StatefulWidget {
+  final String baseUrl;
   final Map<String, dynamic> userInfo;
   final VoidCallback onLogout; // Callback for logout
 
   const Tab4({
+    required this.baseUrl,
     required this.userInfo,
     required this.onLogout,
     super.key
@@ -18,133 +20,33 @@ class Tab4 extends StatefulWidget {
   _Tab4State createState() => _Tab4State();
 }
 
-Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
-  final url = Uri.parse("http://172.10.7.56:8000/users/$userId/friends");
-
-  try {
-    final response = await http.get(
-      url,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(utf8.decode(response.bodyBytes));
-      return List<Map<String, dynamic>>.from(responseData['friends']);
-    } else if (response.statusCode == 404) {
-      print("No friends found.");
-      return [];
-    } else {
-      print("Failed to fetch friends: ${response.body}");
-      throw Exception("Failed to fetch friends");
-    }
-  } catch (e) {
-    print("Error fetching friends: $e");
-    throw Exception("Error fetching friends");
-  }
-}
-
-class QRCodeScanner extends StatefulWidget {
-  final String userId; // 현재 사용자 ID
-
-  const QRCodeScanner({required this.userId, Key? key}) : super(key: key);
-
-  @override
-  _QRCodeScannerState createState() => _QRCodeScannerState();
-}
-
-class _QRCodeScannerState extends State<QRCodeScanner> {
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('QR 코드 스캔')),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            flex: 4,
-            child: QRView(
-              key: qrKey,
-              onQRViewCreated: _onQRViewCreated,
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Center(
-              child: const Text(
-                'QR 코드를 스캔하여 친구를 추가하세요.',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onQRViewCreated(QRViewController controller) {
-    this.controller = controller;
-    controller.scannedDataStream.listen((scanData) {
-      _handleQRCode(scanData.code);
-    });
-  }
-
-  Future<void> _handleQRCode(String? qrCodeData) async {
-    if (qrCodeData == null) {
-      print('QR 코드 데이터가 없습니다.');
-      return;
-    }
+class _Tab4State extends State<Tab4> {
+  Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
+    final url = Uri.parse("${widget.baseUrl}/users/$userId/friends");
 
     try {
-      // QR 코드 데이터를 JSON으로 파싱
-      final qrJson = jsonDecode(qrCodeData);
-      final qrUserId = qrJson['user_id'];
-
-      // 서버로 요청 보내기
-      final response = await http.post(
-        Uri.parse('http://172.10.7.56:8000/friends'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "scanned_user_id": widget.userId,
-          "qr_user_id": qrUserId,
-        }),
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+        },
       );
 
       if (response.statusCode == 200) {
-        // 친구 추가 성공
-        print('친구 추가 성공: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('친구가 성공적으로 추가되었습니다.')),
-        );
-        Navigator.of(context).pop(); // 스캔 화면 종료
+        final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+        return List<Map<String, dynamic>>.from(responseData['friends']);
+      } else if (response.statusCode == 404) {
+        print("No friends found.");
+        return [];
       } else {
-        // 실패 메시지 출력
-        print('친구 추가 실패: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('친구 추가에 실패했습니다. 다시 시도해주세요.')),
-        );
+        print("Failed to fetch friends: ${response.body}");
+        throw Exception("Failed to fetch friends");
       }
     } catch (e) {
-      print('QR 코드 처리 중 오류 발생: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('QR 코드 처리 중 오류가 발생했습니다.')),
-      );
+      print("Error fetching friends: $e");
+      throw Exception("Error fetching friends");
     }
   }
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
-}
-
-
-class _Tab4State extends State<Tab4> {
-  int currentPageOffset = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +112,7 @@ class _Tab4State extends State<Tab4> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => QRCodeScanner(userId: userId),
+                              builder: (context) => QRCodeScanner(baseUrl: widget.baseUrl, userId: userId),
                             ),
                           );
                         },
@@ -421,7 +323,6 @@ class _Tab4State extends State<Tab4> {
     );
   }
 
-
   void navigateToFriendList(String userId) async {
     try {
       // 친구 목록 데이터를 가져옴
@@ -509,7 +410,6 @@ class _Tab4State extends State<Tab4> {
     }
   }
 
-
   void dialog1() async {
     showDialog<void>(
       context: context,
@@ -569,10 +469,10 @@ class _Tab4State extends State<Tab4> {
                 SizedBox(height: 10),
                 Text(
                   '제1조(목적)'
-                      '\n\n이 약관은 업체 회사(전자상거래 사업자)가 운영하는 업체 사이버 몰(이하 “몰”이라 한다)에서 제공하는 인터넷 관련 서비스(이하 “서비스”라 한다)를 이용함에 있어 사이버 몰과 이용자의 권리․의무 및 책임사항을 규정함을 목적으로 합니다.'
-                      '\n※「PC통신, 무선 등을 이용하는 전자상거래에 대해서도 그 성질에 반하지 않는 한 이 약관을 준용합니다.」'
-                      '\n\n제2조(관리)'
-                      '\n\n이 약관은 업체 회사(전자상거래 사업자)가 운영하는 업체 사이버 몰(이하 “몰”이라 한다)에서 제공하는 인터넷 관련 서비스(이하 “서비스”라 한다)를 이용함에 있어 사이버 몰과 이용자의 권리․의무 및 책임사항을 규정함을 목적으로 합니다.',
+                  '\n\n이 약관은 업체 회사(전자상거래 사업자)가 운영하는 업체 사이버 몰(이하 “몰”이라 한다)에서 제공하는 인터넷 관련 서비스(이하 “서비스”라 한다)를 이용함에 있어 사이버 몰과 이용자의 권리․의무 및 책임사항을 규정함을 목적으로 합니다.'
+                  '\n※「PC통신, 무선 등을 이용하는 전자상거래에 대해서도 그 성질에 반하지 않는 한 이 약관을 준용합니다.」'
+                  '\n\n제2조(관리)'
+                  '\n\n이 약관은 업체 회사(전자상거래 사업자)가 운영하는 업체 사이버 몰(이하 “몰”이라 한다)에서 제공하는 인터넷 관련 서비스(이하 “서비스”라 한다)를 이용함에 있어 사이버 몰과 이용자의 권리․의무 및 책임사항을 규정함을 목적으로 합니다.',
                 ),
               ],
             ),
@@ -601,7 +501,7 @@ class _Tab4State extends State<Tab4> {
         return AlertDialog(
           backgroundColor: Colors.white,
           title: const Text(
-            '  로그아웃 하시겠습니까?',
+            '로그아웃 하시겠습니까?',
             style: TextStyle(fontSize: 18),
           ),
           actions: <Widget>[
@@ -628,5 +528,107 @@ class _Tab4State extends State<Tab4> {
         );
       },
     );
+  }
+}
+
+class QRCodeScanner extends StatefulWidget {
+  final String baseUrl;
+  final String userId; // 현재 사용자 ID
+
+  const QRCodeScanner({
+    required this.baseUrl,
+    required this.userId,
+    super.key
+  });
+
+  @override
+  _QRCodeScannerState createState() => _QRCodeScannerState();
+}
+
+class _QRCodeScannerState extends State<QRCodeScanner> {
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('QR 코드 스캔')),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            flex: 4,
+            child: QRView(
+              key: qrKey,
+              onQRViewCreated: _onQRViewCreated,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: const Text(
+                'QR 코드를 스캔하여 친구를 추가하세요.',
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    this.controller = controller;
+    controller.scannedDataStream.listen((scanData) {
+      _handleQRCode(scanData.code);
+    });
+  }
+
+  Future<void> _handleQRCode(String? qrCodeData) async {
+    if (qrCodeData == null) {
+      print('QR 코드 데이터가 없습니다.');
+      return;
+    }
+
+    try {
+      // QR 코드 데이터를 JSON으로 파싱
+      final qrJson = jsonDecode(qrCodeData);
+      final qrUserId = qrJson['user_id'];
+
+      // 서버로 요청 보내기
+      final response = await http.post(
+        Uri.parse('${widget.baseUrl}/friends'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "scanned_user_id": widget.userId,
+          "qr_user_id": qrUserId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 친구 추가 성공
+        print('친구 추가 성공: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('친구가 성공적으로 추가되었습니다.')),
+        );
+        Navigator.of(context).pop(); // 스캔 화면 종료
+      } else {
+        // 실패 메시지 출력
+        print('친구 추가 실패: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('친구 추가에 실패했습니다. 다시 시도해주세요.')),
+        );
+      }
+    } catch (e) {
+      print('QR 코드 처리 중 오류 발생: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('QR 코드 처리 중 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
   }
 }

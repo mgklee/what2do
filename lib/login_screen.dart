@@ -4,10 +4,12 @@ import 'package:http/http.dart' as http;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 class LoginScreen extends StatelessWidget {
+  final String baseUrl;
   final VoidCallback onLoginSuccess;
   final Function(Map<String, dynamic>) onBackendResponse;
 
   const LoginScreen({
+    required this.baseUrl,
     required this.onLoginSuccess,
     required this.onBackendResponse,
     super.key,
@@ -38,7 +40,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   Future<void> _sendTokenToBackend(String accessToken) async {
-    final url = Uri.parse("http://172.10.7.56:8000/users/login");
+    final url = Uri.parse("$baseUrl/users/login");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},

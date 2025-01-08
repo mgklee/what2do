@@ -4,16 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class Tab3 extends StatefulWidget {
+  final String baseUrl;
   final Map<String, dynamic> userInfo;
 
-  const Tab3({required this.userInfo, super.key});
+  const Tab3({
+    required this.baseUrl,
+    required this.userInfo,
+    super.key
+  });
 
   @override
   _Tab3State createState() => _Tab3State();
 }
 
 class _Tab3State extends State<Tab3> {
-  final String baseUrl = 'http://172.10.7.57:8000';
   final List<String> weekDays = ['일', '월', '화', '수', '목', '금', '토']; // Fixed week days
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
@@ -35,7 +39,7 @@ class _Tab3State extends State<Tab3> {
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/friends/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}')
+        Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/friends/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}')
       );
 
       print('Response Status: ${response.statusCode}');

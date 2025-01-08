@@ -4,16 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class Tab1 extends StatefulWidget {
+  final String baseUrl;
   final Map<String, dynamic> userInfo;
 
-  const Tab1({required this.userInfo, super.key});
+  const Tab1({
+    required this.baseUrl,
+    required this.userInfo,
+    super.key
+  });
 
   @override
   _Tab1State createState() => _Tab1State();
 }
 
 class _Tab1State extends State<Tab1> {
-  final String baseUrl = 'http://172.10.7.57:8000';
   final List<String> weekDays = ['일', '월', '화', '수', '목', '금', '토']; // Fixed week days
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
@@ -35,7 +39,7 @@ class _Tab1State extends State<Tab1> {
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+        Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/todos?date=${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
       );
 
       if (response.statusCode == 200) {
@@ -60,7 +64,7 @@ class _Tab1State extends State<Tab1> {
 
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/users/${widget.userInfo['id']}/todos'),
+        Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/todos'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'date': formattedDate, // 포맷된 날짜 사용

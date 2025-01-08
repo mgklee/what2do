@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class Tab2 extends StatefulWidget {
+  final String baseUrl;
   final Map<String, dynamic> userInfo;
 
-  const Tab2({required this.userInfo, super.key});
+  const Tab2({
+    required this.baseUrl,
+    required this.userInfo,
+    super.key
+  });
 
   @override
   _Tab2State createState() => _Tab2State();
@@ -13,7 +18,6 @@ class Tab2 extends StatefulWidget {
 
 class _Tab2State extends State<Tab2> {
   final TextEditingController _urlController = TextEditingController(); // URL 입력 컨트롤러
-  final String baseUrl = 'http://172.10.7.57:8000';
   List<List<int>> binaryList = [];
   // List<List<int>> binaryList = [
   //   [0, 0, 0, 0, 0, 0, 0],
@@ -72,17 +76,19 @@ class _Tab2State extends State<Tab2> {
   //   [0, 0, 0, 0, 0, 0, 0],
   //   [0, 0, 0, 0, 0, 0, 0],
   // ];
-  late int year;
-  late int season;
-  String semester = '2024 2학기';
+  int year = 2024;
+  int season = 2;
+  String semester = '2024년 2학기';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBinaryList();
+  }
 
   // URL 제출 함수
   void _submitUrl(String url) async {
-    final parts = semester.split(' ');
-    int year = int.parse(parts[0]);
-    int season = 3 - ["겨울학기", "2학기", "여름학기", "1학기"].indexOf(parts[1]);
-
-    final uri = Uri.parse('$baseUrl/users/${widget.userInfo['id']}/timetable');
+    final uri = Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/timetable');
     final body = jsonEncode({
       'year': year,
       'season': season,
@@ -101,22 +107,32 @@ class _Tab2State extends State<Tab2> {
         await _fetchBinaryList(); // GET 요청 호출
       } else {
         print('Failed to save timetable: ${response.body}');
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('시간표 저장에 실패했습니다.')),
+          SnackBar(
+            content: Text('시간표 저장에 실패했습니다.'),
+            duration: const Duration(seconds: 1),
+          ),
         );
       }
     } catch (e) {
       print('Error: $e');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다.')),
+        SnackBar(
+          content: Text('서버와 통신 중 오류가 발생했습니다.'),
+          duration: const Duration(seconds: 1),
+        ),
       );
     }
   }
 
-
   // 여기에 프론트 로직 작성할거임~ fetch 함수 작성할거임~
   Future<void> _fetchBinaryList() async {
-    final uri = Uri.parse('$baseUrl/users/${widget.userInfo['id']}/timetable/$year/$season');
+    final uri = Uri.parse('${widget.baseUrl}/users/${widget.userInfo['id']}/timetable/$year/$season');
+    setState(() {
+      binaryList = [];
+    });
 
     try {
       final response = await http.get(uri);
@@ -127,17 +143,26 @@ class _Tab2State extends State<Tab2> {
           binaryList = List<List<int>>.from(
             responseData['array'].map((row) => List<int>.from(row)),
           );
+          print('binaryList loaded\n$binaryList');
         });
       } else {
         print('Failed to fetch timetable: ${response.body}');
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('시간표 조회에 실패했습니다.')),
+          SnackBar(
+            content: Text('시간표 조회에 실패했습니다.'),
+            duration: const Duration(seconds: 1),
+          ),
         );
       }
     } catch (e) {
       print('Error: $e');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다.')),
+        SnackBar(
+          content: Text('서버와 통신 중 오류가 발생했습니다.'),
+          duration: const Duration(seconds: 1),
+        ),
       );
     }
   }
@@ -150,7 +175,7 @@ class _Tab2State extends State<Tab2> {
 
     for (int year in years) {
       for (String season in seasons) {
-        semesters.add("$year $season");
+        semesters.add("$year년 $season");
       }
     }
 
@@ -165,7 +190,7 @@ class _Tab2State extends State<Tab2> {
                 onChanged: (String? newValue) {
                   setState(() {
                     semester = newValue!;
-                    final parts = newValue.split(' ');
+                    final parts = newValue.split('년 ');
                     year = int.parse(parts[0]);
                     season = 3 - seasons.indexOf(parts[1]);
                     _fetchBinaryList();
@@ -179,7 +204,7 @@ class _Tab2State extends State<Tab2> {
                 }).toList(),
               ),
               binaryList.isEmpty
-                  ? TextField(
+              ? TextField(
                 controller: _urlController,
                 decoration: InputDecoration(
                   hintText: '에브리타임 시간표 URL을 입력해 주세요.',
@@ -190,14 +215,14 @@ class _Tab2State extends State<Tab2> {
                 // 키보드에서 Enter/확인 버튼을 누르면 URL 제출
                 onSubmitted: (value) => _submitUrl(value),
               )
-                  : LayoutBuilder(
-                builder: (context, constraints) {
-                  double cellHeight = constraints.maxHeight / (binaryList.length + 1);
-                  double cellWidth = constraints.maxWidth / 8;
-                  double headerHeight = cellHeight * 2;
+              : Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    double cellHeight = constraints.maxHeight / (binaryList.length + 1);
+                    double cellWidth = constraints.maxWidth / 8;
+                    double headerHeight = cellHeight * 2;
 
-                  return Expanded(
-                    child: Column(
+                    return Column(
                       children: [
                         Row(
                           children: [
@@ -287,9 +312,9 @@ class _Tab2State extends State<Tab2> {
                           ),
                         ),
                       ],
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),
