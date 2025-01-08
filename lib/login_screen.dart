@@ -79,7 +79,6 @@ class LoginScreen extends StatelessWidget {
                 TextField(
                   decoration: InputDecoration(
                     labelText: '카카오ID',
-                    hintText: 'enter your kakao ID',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
@@ -91,7 +90,6 @@ class LoginScreen extends StatelessWidget {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: '비밀번호',
-                    hintText: 'enter your PW',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
@@ -111,6 +109,34 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24.0),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        thickness: 1,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        '소셜 로그인',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        thickness: 1,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24.0),
                 ElevatedButton(
                   onPressed: _handleKakaoSignIn,
                   style: ElevatedButton.styleFrom(
@@ -128,7 +154,7 @@ class LoginScreen extends StatelessWidget {
                       Icon(Icons.chat_bubble, color: Colors.black),
                       SizedBox(width: 8.0),
                       Text(
-                        'Login with Kakao',
+                        '카카오로 로그인하기',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ],

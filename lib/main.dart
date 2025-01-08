@@ -64,12 +64,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   @override
   Widget build(BuildContext context) {
     return isLoggedIn
-        ? HomePage(
+    ? HomePage(
       baseUrl: baseUrl,
       userInfo: userInfo,
       onLogout: _onLogout, // Pass logout callback to the main app screen
     )
-        : LoginScreen(
+    : LoginScreen(
       baseUrl: baseUrl,
       onLoginSuccess: _onLoginSuccess, // Pass login success callback to login screen
       onBackendResponse: _onBackendResponse, // Handle backend response
@@ -96,13 +96,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0; // Default selected tab index
 
-  final List<String> _titles = [
-    'Home',
-    'Timetable',
-    'Friends',
-    'My Page',
-  ];
-
   late List<Widget> tabs = [
     Tab1(baseUrl: widget.baseUrl, userInfo: widget.userInfo),
     Tab2(baseUrl: widget.baseUrl, userInfo: widget.userInfo),
@@ -115,24 +108,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60), // Custom height for the AppBar
-        child: AppBar(
-          title: Padding(
-            padding: const EdgeInsets.only(top: 15, left: 5),
-            child: Text(
-              _titles[_currentIndex], // Update title based on current index
-              style: const TextStyle(
-                color: Color(0xFF333333),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          elevation: 0,
-          centerTitle: false,
-        ),
+        child: const SizedBox(height: 60),
       ),
-
       body: tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: buildBottomNavigationItems(),

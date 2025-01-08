@@ -18,6 +18,7 @@ class Tab1 extends StatefulWidget {
 }
 
 class _Tab1State extends State<Tab1> {
+  final String baseUrl = 'http://172.10.7.56:8000';
   final List<String> weekDays = ['일', '월', '화', '수', '목', '금', '토']; // Fixed week days
   late final int initialPage; // Set today as the initial page
   DateTime? selectedDay; // Tracks the currently selected day
