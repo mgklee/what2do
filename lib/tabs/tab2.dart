@@ -93,8 +93,8 @@ class _Tab2State extends State<Tab2> {
             responseData['array'].map((row) => List<int>.from(row)),
           );
           for(int i = 0; i < 56; i++) {
-              print(binaryList[i]);
-            }
+            print(binaryList[i]);
+          }
         });
       } else {
         print('Failed to fetch timetable: ${response.body}');
@@ -180,26 +180,32 @@ class _Tab2State extends State<Tab2> {
           padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
-              DropdownButton<String>(
-                value: semester,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    semester = newValue!;
-                    final parts = newValue.split('년 ');
-                    year = int.parse(parts[0]);
-                    season = 3 - seasons.indexOf(parts[1]);
-                    _fetchBinaryList();
-                  });
-                },
-                items: semesters.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
+              Theme(
+                data: Theme.of(context).copyWith(
+                  canvasColor: Colors.white, // 드롭다운 전체 배경을 흰색으로 설정
+                ),
+                child: DropdownButton<String>(
+                  value: semester,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      semester = newValue!;
+                      final parts = newValue.split('년 ');
+                      year = int.parse(parts[0]);
+                      season = 3 - seasons.indexOf(parts[1]);
+                      _fetchBinaryList();
+                    });
+                  },
+                  items: semesters.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
               ),
+
               binaryList.isEmpty
-              ? Center(
+                  ? Center(
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.8,
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -217,7 +223,7 @@ class _Tab2State extends State<Tab2> {
                   ),
                 ),
               )
-              : Expanded(
+                  : Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     double cellHeight = constraints.maxHeight / (binaryList.length + 1);
@@ -294,8 +300,8 @@ class _Tab2State extends State<Tab2> {
                                                     border: Border(
                                                       right: BorderSide(color: Colors.grey[300]!, width: 1.0),
                                                       bottom: rowOffset == 3
-                                                      ? BorderSide(color: Colors.grey[300]!, width: 1.0)
-                                                      : BorderSide.none,
+                                                          ? BorderSide(color: Colors.grey[300]!, width: 1.0)
+                                                          : BorderSide.none,
                                                     ),
                                                   ),
                                                 ),
@@ -373,6 +379,9 @@ class _Tab2State extends State<Tab2> {
                                 _fetchBinaryList();
                               });
                             },
+                            activeColor: Color(0xFF18C971), // 스위치 활성 상태의 색상 설정
+                            inactiveThumbColor: Colors.grey, // 비활성 상태의 thumb 색상
+                            inactiveTrackColor: Colors.grey[300], // 비활성 상태의 track 색상
                           ),
                           title: Text(friend['nickname'] ?? "Unknown"),
                         );

@@ -104,7 +104,7 @@ class LoginScreen extends StatelessWidget {
                     },
                     child: const Text(
                       '비밀번호 찾기',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: Color(0xFF18C971)),
                     ),
                   ),
                 ),

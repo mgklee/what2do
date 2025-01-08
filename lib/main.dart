@@ -170,7 +170,7 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF18C971) : Colors.transparent,
+        color: isSelected ? Color(0xFF18C971) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
