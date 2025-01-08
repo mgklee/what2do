@@ -16,6 +16,7 @@ dependencies:
   http: ^1.2.2
   qr_flutter: ^4.1.0
   qr_code_scanner: 1.0.1
+  flutter_native_splash: ^2.4.4
 
   # 소셜 로그인: 구글, 카카오
   google_sign_in: ^6.2.2
@@ -29,6 +30,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/splash.png
   fonts:
     - family: Pretendard
       fonts:
@@ -50,3 +53,9 @@ flutter:
           weight: 800
         - asset: fonts/Pretendard-Black.otf
           weight: 900
+
+flutter_native_splash:
+  color: "#0FD380" # 배경색
+  image: assets/splash.png # 스플래쉬 화면에 표시할 이미지
+  android: true
+  ios: true

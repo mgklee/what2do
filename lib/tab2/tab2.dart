@@ -120,7 +120,6 @@ class _Tab2State extends State<Tab2> {
         friends = fetchedFriends.map((friend) {
           return {
             ...friend,
-            'isSelected': false, // 초기 체크박스 상태
           };
         }).toList();
       });

@@ -69,11 +69,11 @@ class _Tab4State extends State<Tab4> {
                   CircleAvatar(
                     radius: 30, // 이미지 크기
                     backgroundImage: profileImage != null
-                        ? NetworkImage(profileImage) // 네트워크 이미지
-                        : null, // null이면 기본 아이콘 표시
+                    ? NetworkImage(profileImage) // 네트워크 이미지
+                    : null, // null이면 기본 아이콘 표시
                     child: profileImage == null
-                        ? const Icon(Icons.person, size: 30) // 기본 아이콘
-                        : null,
+                    ? const Icon(Icons.person, size: 30) // 기본 아이콘
+                    : null,
                   ),
                   const SizedBox(width: 10), // 이미지와 닉네임 간격
                   // 닉네임
@@ -343,24 +343,23 @@ class _Tab4State extends State<Tab4> {
               height: 300,
               width: double.maxFinite,
               child: friends.isEmpty
-                  ? const Center(
+              ? const Center(
                 child: Text("친구가 없습니다."),
               )
-                  : ListView.builder(
+              : ListView.builder(
                 itemCount: friends.length,
                 itemBuilder: (context, index) {
                   final friend = friends[index];
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundImage: friend['profile_image'] != null
-                          ? NetworkImage(friend['profile_image'])
-                          : null,
+                      ? NetworkImage(friend['profile_image'])
+                      : null,
                       child: friend['profile_image'] == null
-                          ? const Icon(Icons.person)
-                          : null,
+                      ? const Icon(Icons.person)
+                      : null,
                     ),
                     title: Text(friend['nickname'] ?? "Unknown"),
-                    subtitle: Text(friend['email'] ?? ""),
                   );
                 },
               ),

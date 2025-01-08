@@ -5,6 +5,7 @@ import 'tab1/tab1.dart';
 import 'tab2/tab2.dart';
 import 'tab3/tab3.dart';
 import 'tab4/tab4.dart';
+import 'splash_screen.dart';
 
 void main() {
   // Flutter SDK 초기화
@@ -39,8 +40,21 @@ class AppEntryPoint extends StatefulWidget {
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   bool isLoggedIn = false; // Tracks if the user is logged in
+  bool showSplashScreen = true; // 스플래시 화면 표시 여부
   final String baseUrl = 'http://172.10.7.57:8000';
   late Map<String, dynamic> userInfo; // Store backend response data
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 2초 후 스플래시 화면 숨김
+    Future.delayed(Duration(seconds: 2), () {
+      setState(() {
+        showSplashScreen = false; // 스플래시 화면 종료
+      });
+    });
+  }
 
   // Simulate login logic (can be replaced with real authentication logic)
   void _onLoginSuccess() {
@@ -63,6 +77,10 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 
   @override
   Widget build(BuildContext context) {
+    if (showSplashScreen) {
+      return SplashScreen(); // 스플래시 화면
+    }
+
     return isLoggedIn
     ? HomePage(
       baseUrl: baseUrl,
