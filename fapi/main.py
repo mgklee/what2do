@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine, get_db
 from auth import verify_kakao_token
 from crud import get_user_by_kakao_id, create_user, get_todos_by_user, get_todos_by_friends, add_friend
-from schemas import OAuthToken, UserResponse
-from models import User, Todo, Friend
+from schemas import OAuthToken, UserResponse, TimetableCreate, TimetableResponse
+from models import User, Todo, Friend, Timetable
 from datetime import datetime
-from typing import Dict,List
+from typing import Dict, List
 from collections import defaultdict
 from everytime import Everytime
 
@@ -21,9 +21,11 @@ Base.metadata.create_all(bind=engine)
 def read_root():
     return {"message": "Server is running"}
 
+
 @app.get("/users")
 def read_root():
     return {"message": "Server is running"}
+
 
 #로그인 화면
 @app.post("/users/login", response_model=UserResponse)
@@ -68,11 +70,10 @@ def login_or_register_with_kakao(token: OAuthToken, db: Session = Depends(get_db
         is_default_nickname=user.is_default_nickname,
     )
 
+
 # 할 일 불러오기기
 @app.get("/users/{user_id}/todos")
 def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)) -> Dict[str, Dict]:
-
-
     # 1. DB에서 사용자와 관련된 TODO 데이터 가져오기
     query = db.query(Todo).filter(Todo.user_id == user_id)
 
@@ -110,7 +111,6 @@ def get_user_todos(user_id: int, date: str = None, db: Session = Depends(get_db)
 
 
 # 할 일 업데이트 엔드포인트 - 데이터 파싱 추가
-
 def parse_and_store_todos(user_id: int, data: dict, db: Session):
     print(data)
     #  날짜 가져오기
@@ -182,20 +182,21 @@ def create_friend(data: dict, db: Session = Depends(get_db)):
 @app.get("/users/{user_id}/friends/todos")
 def get_friends_todos(
     user_id: int,
+    date: str = None,
     limit: int = 10,  # 한 번에 가져올 최대 데이터 개수 (기본값: 10)
     offset: int = 0,  # 건너뛸 데이터 시작 위치 (기본값: 0)
     db: Session = Depends(get_db)
 ):
     # 친구들의 todo 가져오기
-    todos = get_todos_by_friends(db, user_id, limit=limit, offset=offset)
+    todos = get_todos_by_friends(db, user_id, date, limit=limit, offset=offset)
 
     if not todos:
         raise HTTPException(status_code=404, detail="No todos found for the user's friends")
 
     return todos
 
-# 개인 friend 목록 볼 수 있는 tab4 의 엔드포인트 정리
 
+# 개인 friend 목록 볼 수 있는 tab4 의 엔드포인트 정리
 @app.get("/users/{user_id}/friends")
 def get_user_friends(user_id: int, db: Session = Depends(get_db)):
     """
@@ -219,6 +220,71 @@ def get_user_friends(user_id: int, db: Session = Depends(get_db)):
 
     return {"friends": friend_list}
 
-# @app.post("/users/{user_id}/timetable/{year}/{season}")
+
+@app.post("/users/{user_id}/timetable", response_model=TimetableResponse)
+def create_timetable(user_id: int, timetable: TimetableCreate, db: Session = Depends(get_db)):
+    """
+    사용자가 제출한 시간표 정보를 저장하고, URL을 2차원 배열로 변환하여 DB에 저장합니다.
+    """
+    try:
+        print(f"Received data: user_id={user_id}, year={timetable.year}, season={timetable.season}, url={timetable.url}")
+
+        # Everytime 객체 생성 및 2차원 배열로 변환
+        everytime = Everytime(timetable.url)
+        binary_array = everytime.get_timetable()
+        if binary_array is None:
+            raise HTTPException(status_code=400, detail="Failed to parse the timetable from the URL.")
+
+        print(f"Parsed binary array: {binary_array}")
+
+        # 새로운 시간표 데이터 삽입
+        new_timetable = Timetable(
+            user_id=user_id,  # user_id 저장
+            year=timetable.year,
+            season=timetable.season,
+            url=timetable.url,
+            array=binary_array  # 변환된 2차원 배열 저장
+        )
+        db.add(new_timetable)
+        db.commit()
+        db.refresh(new_timetable)
+
+        return {
+            "id": new_timetable.id,
+            "user_id": new_timetable.user_id,  # user_id 반환
+            "year": new_timetable.year,
+            "season": new_timetable.season,
+            "url": new_timetable.url,
+            "array": new_timetable.array,
+        }
+    except Exception as e:
+        print(f"Error occurred in create_timetable: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/users/{user_id}/timetable/{year}/{season}")
+def get_timetable(user_id: int, year: int, season: int, ids: List[int] = Query(default=None), db: Session = Depends(get_db)):
+    """
+    사용자의 특정 연도, 학기의 시간표를 조회합니다.
+    """
+    if ids is None:
+        ids = [user_id]
+
+    print(f"Fetching timetable for user_id={user_id}, year={year}, season={season}")
+    timetables = db.query(Timetable).filter(
+        Timetable.user_id.in_(ids),  # user_id 조건 추가
+        Timetable.year == year,
+        Timetable.season == season,
+    )
+
+    if not timetables.first():
+        raise HTTPException(status_code=404, detail="Timetable not found")
+
+    print(f"Found timetable: {timetables}")
+    result = [[0 for _ in range(7)] for _ in range(56)]
+    for timetable in timetables:
+        result = [[result[i][j] + timetable.array[i][j] for j in range(7)] for i in range(56)]
+
+    return {
+        "array": result,  # 저장된 2차원 배열 반환
+    }

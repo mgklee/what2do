@@ -1,8 +1,8 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, Date, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, Text, Date, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from database import Base
 
-# 데이터베이스  모델을 정의함
+# 데이터베이스 모델을 정의함
 
 class User(Base):
     __tablename__ = "users"
@@ -12,7 +12,7 @@ class User(Base):
     kakao_id = Column(String, unique=True, nullable=False)  # 카카오 사용자 ID
     connected_at = Column(String, nullable=True)  # 카카오와 연결된 시간
     email = Column(String, unique=True, nullable=True)  # 이메일 (카카오에서 필수 제공 아님)
-    
+
     # properties 필드
     nickname = Column(String, nullable=True)  # 닉네임
     profile_image = Column(Text, nullable=True)  # 프로필 이미지 URL
@@ -61,14 +61,18 @@ class Friend(Base):
     user = relationship("User", foreign_keys=[user_id], backref="friends")  # 현재 사용자
     friend = relationship("User", foreign_keys=[friend_id])  # 친구 사용자
 
-# class Timetable(Base):
-#     __tablename__="Timetable"
+class Timetable(Base):
+    __tablename__="timetable"
 
-#     """일단 이 테이블은 ㅇㅇ"""
-#     #필드 정의
-#     id = Column(Integer, primary_key=True, index=True)
-#     year = Column(Integar)
-#     season = Column(Integar)
-#     url = 
+    """일단 이 테이블은 프론트엔드쪽에서 에브리타임이라는 어플의 시간표 url을 입력하면 해당 시간표의 year정보, season 정보, 어떤 url 인지를 담는 테이블이야"""
 
+    # 필드 정의
+    id = Column(Integer, primary_key=True, index=True)  # 기본 키
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # User 테이블의 id를 외래키로 참조
+    year = Column(Integer, nullable=False)  # 연도 (필수 값)
+    season = Column(Integer, nullable=False)  # 학기 (예: 1학기, 2학기)
+    url = Column(String, nullable=False, unique=True)  # 시간표 URL (고유값)
+    array = Column(JSON, nullable=True) # 변환된 2차원 배열 (JSON 형식, NULL 허용)
 
+    def __repr__(self):
+        return f"<Timetable(id={self.id}, year={self.year}, season={self.season}, url={self.url}, array={self.array})>"
